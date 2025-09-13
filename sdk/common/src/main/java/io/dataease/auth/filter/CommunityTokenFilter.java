@@ -7,7 +7,6 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.Verification;
 import io.dataease.auth.bo.TokenUserBO;
 import io.dataease.auth.config.SubstituleLoginConfig;
-import io.dataease.license.utils.LicenseUtil;
 import io.dataease.utils.*;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletResponse;
@@ -34,7 +33,9 @@ public class CommunityTokenFilter implements Filter {
         Long userId = null;
         String token = ServletUtils.getToken();
         TokenUserBO userBO = null;
-        if (StringUtils.isNotBlank(token) && ObjectUtils.isNotEmpty(userBO = AuthUtils.getUser()) && ObjectUtils.isNotEmpty(userId = userBO.getUserId()) && !LicenseUtil.licenseValid()) {
+        // 修改：移除许可证检查，允许所有用户正常访问
+        // 原始代码：&& !LicenseUtil.licenseValid()
+        if (StringUtils.isNotBlank(token) && ObjectUtils.isNotEmpty(userBO = AuthUtils.getUser()) && ObjectUtils.isNotEmpty(userId = userBO.getUserId()) && false) {
             String secret = null;
             if (ObjectUtils.isEmpty(CommonBeanFactory.getBean("loginServer"))) {
                 String pwd = SubstituleLoginConfig.getPwd();

@@ -2,5 +2,5 @@ package io.dataease.model;
 
 public enum DeModel {
 
-    DESKTOP, STANDALONE, DISTRIBUTED
+    DESKTOP, STANDALONE, DISTRIBUTED, LOCAL
 }

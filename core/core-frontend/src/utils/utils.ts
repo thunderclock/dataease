@@ -226,7 +226,7 @@ export const getBrowserLocale = () => {
     return 'zh-CN'
   }
   if (language.startsWith('en')) {
-    return 'en'
+    return 'en-US'
   }
   if (language.toLowerCase().startsWith('zh')) {
     const temp = language.toLowerCase().replace('_', '-')

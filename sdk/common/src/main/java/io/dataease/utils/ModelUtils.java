@@ -15,7 +15,15 @@ public class ModelUtils {
     }
 
     public static DeModel get() {
-        return DeModel.valueOf(modelValue.toUpperCase());
+        if (modelValue == null) {
+            return DeModel.STANDALONE;
+        }
+        String upperValue = modelValue.toUpperCase();
+        // 特殊处理 local profile
+        if ("LOCAL".equals(upperValue)) {
+            return DeModel.LOCAL;
+        }
+        return DeModel.valueOf(upperValue);
     }
 
     public static boolean isDesktop() {

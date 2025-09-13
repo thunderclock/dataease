@@ -110,6 +110,9 @@ public class PermissionManage {
             datasetColumnPermissions.addAll(dataSetColumnPermissionsDTOS);
         }
 
+        if (getRowPermissionsApi() == null) {
+            return datasetColumnPermissions;
+        }
         List<Long> roleIds = getRowPermissionsApi().getUserById(userId).getRoleIds().stream().map(x -> Long.valueOf(x)).collect(Collectors.toList());
         if (CollectionUtils.isNotEmpty(roleIds)) {
             List<Item> items = (List<Item>) getRowPermissionsApi().authObjs(datasetId, "role");
@@ -149,6 +152,9 @@ public class PermissionManage {
         userId = userId != null ? userId : AuthUtils.getUser().getUserId();
 
         if (AuthUtils.isSysAdmin(userId)) {
+            return datasetRowPermissions;
+        }
+        if (getRowPermissionsApi() == null) {
             return datasetRowPermissions;
         }
         UserFormVO userEntity = getRowPermissionsApi().getUserById(userId);

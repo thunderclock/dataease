@@ -8,7 +8,7 @@ import { getLocale } from '@/utils/utils'
 import request from '@/config/axios'
 const elLocaleMap = {
   'zh-CN': zhCn,
-  en: en,
+  'en-US': en,
   tw: tw
 }
 interface LocaleState {
@@ -32,7 +32,7 @@ export const useLocaleStore = defineStore('locales', {
           name: '简体中文'
         },
         {
-          lang: 'en',
+          lang: 'en-US',
           name: 'English'
         },
         {

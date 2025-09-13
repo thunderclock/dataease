@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: dataease-mysql-test
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: DataEase@123456
+      MYSQL_DATABASE: dataease
+      MYSQL_USER: dataease
+      MYSQL_PASSWORD: DataEase@123456
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./core/core-backend/src/main/resources/db/migration:/docker-entrypoint-initdb.d
+    command: 
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+8:00
+      - --lower-case-table-names=1
+    networks:
+      - dataease-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: dataease-redis-test
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass DataEase@123456
+    networks:
+      - dataease-network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  dataease-network:
+    driver: bridge

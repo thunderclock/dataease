@@ -1,0 +1,56 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/dataease?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: dataease
+    password: DataEase@123456
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      password: DataEase@123456
+      database: 0
+      timeout: 10000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+  # 数据库迁移配置 - 暂时禁用，因为我们已经手动创建了表
+  flyway:
+    enabled: true
+    table: de_standalone_version
+    validate-on-migrate: false
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    out-of-order: true
+  # 国际化配置
+  messages:
+    basename: i18n/lic,i18n/core,i18n/permissions,i18n/xpack,i18n/sync
+
+# MyBatis-Plus配置
+mybatis-plus:
+  mapper-locations: classpath:mybatis/*.xml
+
+# 日志配置
+logging:
+  level:
+    io.dataease: DEBUG
+    org.springframework.web: DEBUG
+    org.mybatis: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# 开发环境配置
+dataease:
+  login_timeout: 2880
+  origin-list: http://localhost:8080,http://localhost:3000
+  path:
+    ehcache: ./cache

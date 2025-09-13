@@ -6,7 +6,6 @@ import io.dataease.extensions.datasource.provider.Provider;
 import io.dataease.extensions.datasource.utils.SpringContextUtil;
 import io.dataease.extensions.datasource.vo.DatasourceConfiguration;
 import io.dataease.extensions.datasource.vo.XpackPluginsDatasourceVO;
-import io.dataease.license.utils.LicenseUtil;
 import io.dataease.license.utils.LogUtil;
 import io.dataease.plugins.factory.DataEasePluginFactory;
 
@@ -43,13 +42,15 @@ public class ProviderFactory {
     private static final Map<String, DataEaseDatasourcePlugin> templateMap = new ConcurrentHashMap<>();
 
     public static Provider getInstance(String type) {
-        if (!LicenseUtil.licenseValid()) DEException.throwException("插件功能只对企业版本可用！");
+        // 修改：移除企业版限制，允许社区版使用插件功能
+        // if (!LicenseUtil.licenseValid()) DEException.throwException("插件功能只对企业版本可用！");
         String key = type;
         return templateMap.get(key);
     }
 
     public static void loadPlugin(String type, DataEaseDatasourcePlugin plugin) {
-        if (!LicenseUtil.licenseValid()) DEException.throwException("插件功能只对企业版本可用！");
+        // 修改：移除企业版限制，允许社区版使用插件功能
+        // if (!LicenseUtil.licenseValid()) DEException.throwException("插件功能只对企业版本可用！");
         String key = type;
         if (templateMap.containsKey(key)) return;
         templateMap.put(key, plugin);
@@ -63,7 +64,8 @@ public class ProviderFactory {
     }
 
     public static List<XpackPluginsDatasourceVO> getDsConfigList() {
-        if (!LicenseUtil.licenseValid()) DEException.throwException("插件功能只对企业版本可用！");
+        // 修改：移除企业版限制，允许社区版使用插件功能
+        // if (!LicenseUtil.licenseValid()) DEException.throwException("插件功能只对企业版本可用！");
         return templateMap.values().stream().map(DataEaseDatasourcePlugin::getConfig).toList();
     }
 }

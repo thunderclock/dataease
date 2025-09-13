@@ -1046,7 +1046,7 @@ public class DatasourceServer implements DatasourceApi {
 
     private void preCheckDs(DatasourceDTO datasource) throws DEException {
         List<String> list = datasourceTypes().stream().map(DatasourceConfiguration.DatasourceType::getType).collect(Collectors.toList());
-        if (LicenseUtil.licenseValid()) {
+        if (LicenseUtil.licenseValid() && pluginManage != null) {
             List<XpackPluginsDatasourceVO> xpackPluginsDatasourceVOS = pluginManage.queryPluginDs();
             xpackPluginsDatasourceVOS.forEach(ele -> list.add(ele.getType()));
         }

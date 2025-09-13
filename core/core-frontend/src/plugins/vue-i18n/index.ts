@@ -6,45 +6,74 @@ import { setHtmlPageLang } from './helper'
 export let i18n: ReturnType<typeof createI18n>
 import { PATH_URL } from '@/config/axios/service'
 const createI18nOptions = async (): Promise<I18nOptions> => {
-  const localeStore = useLocaleStoreWithOut()
-  let locale = localeStore.getCurrentLocale
-  const localeMap = await localeStore.getLocaleMap
-  const cMap: any = localeMap.find(item => {
-    return item.lang === locale.lang
-  })
-  let defaultLocal = null
-  if (cMap) {
-    if (cMap['custom']) {
-      defaultLocal = await loadRemoteI18n(cMap)
+  try {
+    const localeStore = useLocaleStoreWithOut()
+    let locale = localeStore.getCurrentLocale
+    const localeMap = await localeStore.getLocaleMap
+    const cMap: any = localeMap.find(item => {
+      return item.lang === locale.lang
+    })
+    let defaultLocal = null
+    if (cMap) {
+      if (cMap['custom']) {
+        defaultLocal = await loadRemoteI18n(cMap)
+      } else {
+        defaultLocal = await import(`../../locales/${locale.lang}.ts`)
+      }
     } else {
+      const item = localeMap[0]
+      localeStore.setLang(item.lang)
+      locale = localeStore.getCurrentLocale
       defaultLocal = await import(`../../locales/${locale.lang}.ts`)
     }
-  } else {
-    const item = localeMap[0]
-    localeStore.setLang(item.lang)
-    locale = localeStore.getCurrentLocale
-    defaultLocal = await import(`../../locales/${locale.lang}.ts`)
-  }
-  const message = defaultLocal.default ?? {}
+    const message = defaultLocal.default ?? {}
 
-  setHtmlPageLang(locale.lang)
+    console.log('i18n initialization:', {
+      locale: locale.lang,
+      messageKeys: Object.keys(message).length,
+      hasUserManagement: !!message['user_management.title'],
+      sampleKeys: Object.keys(message)
+        .filter(k => k.includes('user_management'))
+        .slice(0, 5),
+      messageStructure: typeof message,
+      firstFewKeys: Object.keys(message).slice(0, 10)
+    })
 
-  localeStore.setCurrentLocale({
-    lang: locale.lang
-  })
+    setHtmlPageLang(locale.lang)
 
-  return {
-    legacy: false,
-    locale: locale.lang,
-    fallbackLocale: locale.lang,
-    messages: {
-      [locale.lang]: message
-    },
-    availableLocales: localeMap.map(v => v.lang),
-    sync: true,
-    silentTranslationWarn: true,
-    missingWarn: false,
-    silentFallbackWarn: true
+    localeStore.setCurrentLocale({
+      lang: locale.lang
+    })
+
+    return {
+      legacy: false,
+      locale: locale.lang,
+      fallbackLocale: locale.lang,
+      messages: {
+        [locale.lang]: message
+      },
+      availableLocales: localeMap.map(v => v.lang),
+      sync: true,
+      silentTranslationWarn: true,
+      missingWarn: false,
+      silentFallbackWarn: true
+    }
+  } catch (error) {
+    console.error('i18n initialization error:', error)
+    // 返回默认配置
+    return {
+      legacy: false,
+      locale: 'zh-CN',
+      fallbackLocale: 'zh-CN',
+      messages: {
+        'zh-CN': {}
+      },
+      availableLocales: ['zh-CN'],
+      sync: true,
+      silentTranslationWarn: true,
+      missingWarn: false,
+      silentFallbackWarn: true
+    }
   }
 }
 

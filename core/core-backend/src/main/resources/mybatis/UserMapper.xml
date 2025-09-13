@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.dataease.user.dao.UserMapper">
+
+    <!-- 用户结果映射 -->
+    <resultMap id="BaseResultMap" type="io.dataease.user.entity.User">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="username" property="username" jdbcType="VARCHAR"/>
+        <result column="account" property="account" jdbcType="VARCHAR"/>
+        <result column="password" property="password" jdbcType="VARCHAR"/>
+        <result column="email" property="email" jdbcType="VARCHAR"/>
+        <result column="phone" property="phone" jdbcType="VARCHAR"/>
+        <result column="enable" property="enable" jdbcType="BOOLEAN"/>
+        <result column="org_id" property="orgId" jdbcType="BIGINT"/>
+        <result column="create_time" property="createTime" jdbcType="BIGINT"/>
+        <result column="update_time" property="updateTime" jdbcType="BIGINT"/>
+        <result column="creator" property="creator" jdbcType="BIGINT"/>
+        <result column="language" property="language" jdbcType="VARCHAR"/>
+        <result column="last_login_time" property="lastLoginTime" jdbcType="BIGINT"/>
+        <result column="last_login_ip" property="lastLoginIp" jdbcType="VARCHAR"/>
+        <result column="avatar" property="avatar" jdbcType="VARCHAR"/>
+        <result column="remark" property="remark" jdbcType="VARCHAR"/>
+        <result column="deleted" property="deleted" jdbcType="BOOLEAN"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, username, account, password, email, phone, enable, org_id, create_time, 
+        update_time, creator, language, last_login_time, last_login_ip, avatar, remark, deleted
+    </sql>
+
+    <!-- 分页查询用户列表 -->
+    <select id="selectUserPage" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM core_user
+        WHERE deleted = 0
+        <if test="keyword != null and keyword != ''">
+            AND (username LIKE CONCAT('%', #{keyword}, '%') 
+                 OR account LIKE CONCAT('%', #{keyword}, '%')
+                 OR email LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="orgId != null">
+            AND org_id = #{orgId}
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据账号查询用户 -->
+    <select id="selectByAccount" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM core_user
+        WHERE account = #{account} AND deleted = 0
+    </select>
+
+    <!-- 根据邮箱查询用户 -->
+    <select id="selectByEmail" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM core_user
+        WHERE email = #{email} AND deleted = 0
+    </select>
+
+    <!-- 根据手机号查询用户 -->
+    <select id="selectByPhone" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM core_user
+        WHERE phone = #{phone} AND deleted = 0
+    </select>
+
+    <!-- 查询组织内用户 -->
+    <select id="selectByOrgId" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List"/>
+        FROM core_user
+        WHERE org_id = #{orgId} AND deleted = 0 AND enable = 1
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 批量查询用户信息 -->
+    <select id="selectUserInfosByIds" resultType="java.util.Map">
+        SELECT 
+            id,
+            username,
+            account,
+            email,
+            phone,
+            avatar
+        FROM core_user
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND deleted = 0
+    </select>
+
+    <!-- 根据账号查询用户ID -->
+    <select id="selectUserIdByAccount" resultType="java.lang.Long">
+        SELECT id FROM core_user WHERE account = #{account} AND deleted = 0
+    </select>
+
+    <!-- 根据用户名查询用户ID -->
+    <select id="selectUserIdByName" resultType="java.lang.Long">
+        SELECT id FROM core_user WHERE username = #{name} AND deleted = 0
+    </select>
+
+    <!-- 更新最后登录信息 -->
+    <update id="updateLastLogin">
+        UPDATE core_user 
+        SET last_login_time = #{loginTime}, last_login_ip = #{loginIp}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 统计用户数量 -->
+    <select id="countUsers" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM core_user WHERE deleted = 0
+        <if test="orgId != null">
+            AND org_id = #{orgId}
+        </if>
+    </select>
+
+    <!-- 查询用户角色信息 -->
+    <select id="selectUserRoles" resultType="java.util.Map">
+        SELECT 
+            r.id as role_id,
+            r.name as role_name,
+            r.description as role_description
+        FROM core_role r
+        INNER JOIN core_user_role ur ON r.id = ur.role_id
+        WHERE ur.user_id = #{userId} AND r.deleted = 0
+    </select>
+
+</mapper>

@@ -40,7 +40,6 @@ core/core-frontend/.stylelintcache
 core/core-frontend/src/assets/fsSvg.js
 core/core-frontend/src/assets/fsSvg.html
 .flattened-pom.xml
-/core/core-backend/
 /core/frontend/
 /core/mobile/
 /sdk/dataease-plugin-common/
@@ -52,3 +51,6 @@ core/core-frontend/src/assets/fsSvg.html
 .vite/
 /core/backend/
 /classpath:substitule.json
+/test/
+/cache/
+/logs/

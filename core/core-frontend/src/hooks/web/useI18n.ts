@@ -33,6 +33,7 @@ export const useI18n = (
   }
 
   if (!i18n) {
+    console.warn('i18n not initialized, returning key as fallback')
     return normalFn
   }
 
@@ -41,7 +42,19 @@ export const useI18n = (
   const tFn: I18nGlobalTranslation = (key: string, ...arg: any[]) => {
     if (!key) return ''
     if (!key.includes('.') && !namespace) return key
-    return (t as any)(getKey(namespace, key), ...(arg as I18nTranslationRestParameters))
+
+    try {
+      const result = (t as any)(getKey(namespace, key), ...(arg as I18nTranslationRestParameters))
+      // 如果结果是键名本身，说明翻译未找到
+      if (result === getKey(namespace, key)) {
+        console.warn(`Translation not found for key: ${getKey(namespace, key)}`)
+      }
+      return result
+    } catch (error) {
+      // 如果翻译出错，返回键名
+      console.warn(`Translation error for key: ${getKey(namespace, key)}`, error)
+      return getKey(namespace, key)
+    }
   }
   return {
     ...methods,

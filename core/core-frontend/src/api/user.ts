@@ -82,3 +82,58 @@ export const defaultPwdApi = () => request.get({ url: '/user/defaultPwd' })
 export const resetPwdApi = uid => request.post({ url: `/user/resetPwd/${uid}` })
 
 export const switchEnableApi = data => request.post({ url: '/user/enable', data })
+
+// 用户管理相关API - 增强版本
+export const userApi = {
+  // 分页查询用户
+  pager: (page: number, size: number, data: any = {}) =>
+    request.post({ url: `/user/pager/${page}/${size}`, data }),
+
+  // 创建用户
+  create: (data: any) => request.post({ url: '/user/create', data }),
+
+  // 编辑用户
+  edit: (data: any) => request.post({ url: '/user/edit', data }),
+
+  // 删除用户
+  delete: (id: number) => request.post({ url: `/user/delete/${id}` }),
+
+  // 切换用户状态
+  enable: (data: any) => request.post({ url: '/user/enable', data }),
+
+  // 获取角色选项
+  getRoleOptions: () => request.post({ url: '/role/query', data: {} }),
+
+  // 获取用户详情
+  getById: (id: number) => request.get({ url: `/user/queryById/${id}` }),
+
+  // 批量删除
+  batchDelete: (ids: number[]) => request.post({ url: '/user/batchDel', data: ids }),
+
+  // 重置密码
+  resetPassword: (id: number) => request.post({ url: `/user/resetPwd/${id}` }),
+
+  // 获取默认密码
+  getDefaultPassword: () => request.get({ url: '/user/defaultPwd' })
+}
+
+// 角色管理相关API
+export const roleApi = {
+  // 查询角色列表
+  query: (data: any = {}) => request.post({ url: '/role/query', data }),
+
+  // 创建角色
+  create: (data: any) => request.post({ url: '/role/create', data }),
+
+  // 编辑角色
+  edit: (data: any) => request.post({ url: '/role/edit', data }),
+
+  // 删除角色
+  delete: (id: number) => request.post({ url: `/role/delete/${id}` }),
+
+  // 获取角色详情
+  detail: (id: number) => request.get({ url: `/role/detail/${id}` }),
+
+  // 获取角色选项
+  getOptions: () => request.post({ url: '/role/query', data: {} })
+}
