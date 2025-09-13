@@ -4402,5 +4402,6 @@ export default {
   'user_management.email_invalid': 'Please enter valid email format',
   'user_management.cancel': 'Cancel',
   'user_management.password_edit_placeholder': 'Leave empty to keep current password',
-  'user_management.password_edit_tip': 'Leave empty to keep current password, enter new password to replace it'
+  'user_management.password_edit_tip':
+    'Leave empty to keep current password, enter new password to replace it'
 }
