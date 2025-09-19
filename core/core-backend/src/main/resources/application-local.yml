@@ -53,4 +53,4 @@ dataease:
   login_timeout: 2880
   origin-list: http://localhost:8080,http://localhost:3000
   path:
-    ehcache: ./cache
+    ehcache: /Users/zhonglei/Desktop/Projects/dataease/core/core-backend/cache
