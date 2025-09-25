@@ -29,5 +29,10 @@ public class TableField implements Serializable {
     private int inCount;
     private String term = "eq";
     private Integer typeNumber;
+    
+    /**
+     * 字段注释/描述
+     */
+    private String description;
 
 }

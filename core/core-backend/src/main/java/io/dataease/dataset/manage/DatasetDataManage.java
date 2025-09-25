@@ -154,13 +154,14 @@ public class DatasetDataManage {
                     sql = SqlUtils.addSchema(originSql, tableSchema);
                 }
             }
-            datasourceRequest.setQuery(sql.replaceAll("\r\n", " ")
-                    .replaceAll("\n", " "));
-            logger.debug("calcite data table field sql: " + datasourceRequest.getQuery());
             // 获取数据源表的原始字段
             if (StringUtils.equalsIgnoreCase(type, DatasetTableType.DB)) {
                 datasourceRequest.setTable(tableInfoDTO.getTable());
             }
+            
+            datasourceRequest.setQuery(sql.replaceAll("\r\n", " ")
+                    .replaceAll("\n", " "));
+            logger.debug("calcite data table field sql: " + datasourceRequest.getQuery());
 
             tableFields = provider.fetchTableField(datasourceRequest);
         } else if (StringUtils.equalsIgnoreCase(type, DatasetTableType.Es)) {
@@ -205,7 +206,14 @@ public class DatasetDataManage {
             dto.setDeType(ObjectUtils.isEmpty(ele.getDeType()) ? deType : ele.getDeType());
             dto.setGroupType(FieldUtils.transDeType2DQ(dto.getDeType()));
             dto.setExtField(0);
-            dto.setDescription(StringUtils.isNotEmpty(ele.getName()) ? ele.getName() : null);
+            // 优先使用TableField的description字段，如果没有则使用字段名
+            String description = null;
+            if (ele.getDescription() != null && !ele.getDescription().trim().isEmpty()) {
+                description = ele.getDescription();
+            } else if (StringUtils.isNotEmpty(ele.getName())) {
+                description = ele.getName();
+            }
+            dto.setDescription(description);
             return dto;
         }).collect(Collectors.toList());
     }

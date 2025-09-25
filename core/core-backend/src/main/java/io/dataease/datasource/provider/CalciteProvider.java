@@ -9,6 +9,8 @@ import io.dataease.datasource.dao.auto.entity.CoreDriver;
 import io.dataease.datasource.dao.auto.mapper.CoreDatasourceMapper;
 import io.dataease.datasource.manage.EngineManage;
 import io.dataease.datasource.request.EngineRequest;
+import java.sql.PreparedStatement;
+import io.dataease.datasource.utils.FieldCommentUtils;
 import io.dataease.datasource.type.*;
 import io.dataease.exception.DEException;
 import io.dataease.extensions.datasource.dto.*;
@@ -374,6 +376,15 @@ public class CalciteProvider extends Provider {
             }
         }
 
+        // 为字段添加注释信息
+        try {
+            logger.error("before enrichFieldComments in fetchTableField: {}", datasetTableFields);
+            FieldCommentUtils.enrichFieldComments(datasetTableFields, datasourceRequest);
+            logger.error("after enrichFieldComments in fetchTableField: {}", datasetTableFields);
+        } catch (Exception e) {
+            logger.error("Failed to enrich field comments in fetchTableField: {}", e.getMessage());
+        }
+
         return datasetTableFields;
     }
 
@@ -695,6 +706,14 @@ public class CalciteProvider extends Provider {
         List<TableField> fieldList = new ArrayList<>();
         ResultSetMetaData metaData = rs.getMetaData();
         int columnCount = metaData.getColumnCount();
+        
+        // 获取数据库类型
+        String dbType = datasourceRequest.getDatasource().getType();
+        String tableName = datasourceRequest.getTable();
+
+        logger.info("dbType: {}", dbType);
+        logger.info("tableName: {}", tableName);
+        
         for (int j = 0; j < columnCount; j++) {
             String f = metaData.getColumnName(j + 1);
             if (StringUtils.containsIgnoreCase(f, "ROWNUM")) {
@@ -707,10 +726,23 @@ public class CalciteProvider extends Provider {
             field.setName(l);
             field.setFieldType(t);
             field.setType(t);
+            
+            
             fieldList.add(field);
         }
+        
+        // 为字段添加注释信息
+        try {
+            logger.error("before enrichFieldComments: {}", fieldList);
+            FieldCommentUtils.enrichFieldComments(fieldList, datasourceRequest);
+            logger.error("after enrichFieldComments: {}", fieldList);
+        } catch (Exception e) {
+            logger.error("Failed to enrich field comments: {}", e.getMessage());
+        }
+        
         return fieldList;
     }
+
 
     private List<String[]> getData(ResultSet rs, DatasourceRequest datasourceRequest) throws Exception {
         String targetCharset = null;
@@ -877,7 +909,13 @@ public class CalciteProvider extends Provider {
         int deType = FieldUtils.transType2DeType(tableField.getType());
         tableField.setDeExtractType(deType);
         tableField.setDeType(deType);
-        tableField.setName(resultSet.getString(commentIndex));
+        String comment = resultSet.getString(commentIndex);
+        // 如果注释是"Yes"，使用原始字段名
+        if ("Yes".equals(comment)) {
+            tableField.setName(tableField.getOriginName());
+        } else {
+            tableField.setName(comment);
+        }
         try {
             tableField.setPrimary(resultSet.getInt(4) > 0);
         } catch (Exception e) {
@@ -896,6 +934,19 @@ public class CalciteProvider extends Provider {
             tableField.setTypeNumber(tableTypeMap.get(StringUtils.lowerCase(tableField.getOriginName())));
         } catch (Exception e) {
         }
+        
+        // 设置字段注释
+        try {
+            if ("Yes".equals(comment)) {
+                // 如果注释是"Yes"，使用原始字段名作为描述
+                tableField.setDescription(tableField.getOriginName());
+            } else if (StringUtils.isNotEmpty(comment)) {
+                tableField.setDescription(comment);
+            }
+        } catch (Exception e) {
+            // 忽略异常，使用默认值
+        }
+        
         return tableField;
     }
 
