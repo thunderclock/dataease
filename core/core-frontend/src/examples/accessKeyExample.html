@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AccessKey 签名验证测试</title>
+  <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .container {
+      margin-bottom: 30px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #409EFF;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background-color: #66b1ff;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f5f5f5;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .error {
+      color: red;
+    }
+    .success {
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h1>AccessKey 签名验证测试</h1>
+  
+  <div class="container">
+    <h2>配置</h2>
+    <label>AccessKey:</label>
+    <input type="text" id="accessKey" placeholder="请输入 AccessKey（如：de_abc123...）">
+    
+    <label>AccessSecret:</label>
+    <input type="password" id="accessSecret" placeholder="请输入 AccessSecret">
+    
+    <label>API 地址:</label>
+    <input type="text" id="baseUrl" value="http://localhost:8100" placeholder="http://localhost:8100">
+  </div>
+  
+  <div class="container">
+    <h2>测试查询数据（字段名方式）</h2>
+    <label>请求数据 (JSON):</label>
+    <textarea id="queryDataRequest" rows="10" placeholder='{"tableId": 123, "dimensions": [...], "measures": [...], "pageInfo": {"pageNum": 1, "pageSize": 10}}'></textarea>
+    <button onclick="testQueryData()">测试查询数据</button>
+    <div id="queryDataResult" class="result"></div>
+  </div>
+  
+  <div class="container">
+    <h2>测试查询图表数据（ID方式）</h2>
+    <label>请求数据 (JSON):</label>
+    <textarea id="queryChartDataRequest" rows="10" placeholder='{"tableId": 123, "dimensions": [...], "measures": [...], "pageInfo": {"pageNum": 1, "pageSize": 10}, "sceneId": 456}'></textarea>
+    <button onclick="testQueryChartData()">测试查询图表数据</button>
+    <div id="queryChartDataResult" class="result"></div>
+  </div>
+  
+  <script>
+    /**
+     * 生成签名
+     */
+    function generateSignature(accessSecret, timestamp, requestBody) {
+      const signString = accessSecret + timestamp + (requestBody || '')
+      const hash = CryptoJS.HmacSHA256(signString, accessSecret)
+      return CryptoJS.enc.Base64.stringify(hash)
+    }
+    
+    /**
+     * 使用 AccessKey 发送 POST 请求
+     */
+    async function postWithAccessKey(url, data, accessKey, accessSecret) {
+      const requestBody = typeof data === 'string' ? data : JSON.stringify(data)
+      const timestamp = Date.now()
+      const signature = generateSignature(accessSecret, timestamp, requestBody)
+      
+      try {
+        const response = await axios.post(url, requestBody, {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-ACCESS-KEY': accessKey,
+            'X-TIMESTAMP': timestamp.toString(),
+            'X-SIGNATURE': signature
+          },
+          transformRequest: [(data) => data]
+        })
+        return response.data
+      } catch (error) {
+        throw error.response?.data || error
+      }
+    }
+    
+    /**
+     * 测试查询数据
+     */
+    async function testQueryData() {
+      const accessKey = document.getElementById('accessKey').value
+      const accessSecret = document.getElementById('accessSecret').value
+      const baseUrl = document.getElementById('baseUrl').value
+      const requestText = document.getElementById('queryDataRequest').value
+      const resultDiv = document.getElementById('queryDataResult')
+      
+      if (!accessKey || !accessSecret) {
+        resultDiv.innerHTML = '<span class="error">请先输入 AccessKey 和 AccessSecret</span>'
+        return
+      }
+      
+      if (!requestText) {
+        resultDiv.innerHTML = '<span class="error">请先输入请求数据</span>'
+        return
+      }
+      
+      try {
+        const requestData = JSON.parse(requestText)
+        resultDiv.innerHTML = '正在请求...'
+        
+        const response = await postWithAccessKey(
+          `${baseUrl}/commonData/queryData`,
+          requestData,
+          accessKey,
+          accessSecret
+        )
+        
+        resultDiv.innerHTML = '<span class="success">请求成功！</span>\n\n' + JSON.stringify(response, null, 2)
+      } catch (error) {
+        resultDiv.innerHTML = '<span class="error">请求失败：</span>\n' + JSON.stringify(error, null, 2)
+      }
+    }
+    
+    /**
+     * 测试查询图表数据
+     */
+    async function testQueryChartData() {
+      const accessKey = document.getElementById('accessKey').value
+      const accessSecret = document.getElementById('accessSecret').value
+      const baseUrl = document.getElementById('baseUrl').value
+      const requestText = document.getElementById('queryChartDataRequest').value
+      const resultDiv = document.getElementById('queryChartDataResult')
+      
+      if (!accessKey || !accessSecret) {
+        resultDiv.innerHTML = '<span class="error">请先输入 AccessKey 和 AccessSecret</span>'
+        return
+      }
+      
+      if (!requestText) {
+        resultDiv.innerHTML = '<span class="error">请先输入请求数据</span>'
+        return
+      }
+      
+      try {
+        const requestData = JSON.parse(requestText)
+        resultDiv.innerHTML = '正在请求...'
+        
+        const response = await postWithAccessKey(
+          `${baseUrl}/commonData/queryChartData`,
+          requestData,
+          accessKey,
+          accessSecret
+        )
+        
+        resultDiv.innerHTML = '<span class="success">请求成功！</span>\n\n' + JSON.stringify(response, null, 2)
+      } catch (error) {
+        resultDiv.innerHTML = '<span class="error">请求失败：</span>\n' + JSON.stringify(error, null, 2)
+      }
+    }
+  </script>
+</body>
+</html>
+

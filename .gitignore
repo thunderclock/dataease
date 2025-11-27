@@ -54,3 +54,6 @@ core/core-frontend/src/assets/fsSvg.html
 /test/
 /cache/
 /logs/
+*.pid
+cache/
+tmp/

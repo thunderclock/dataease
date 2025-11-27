@@ -46,6 +46,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Objects;
+import io.dataease.engine.constant.ExtFieldConstant;
 
 /**
  * @Author Junjun
@@ -140,6 +142,25 @@ public class ChartDataManage {
         var xAxis = formatResult.getAxisMap().get(ChartAxis.xAxis);
         var yAxis = formatResult.getAxisMap().get(ChartAxis.yAxis);
         formatResult.getContext().put("allFields", allFields);
+        // 将计算字段的 dataeaseName 添加到 dataeaseNames 中，避免被过滤掉
+        if (CollectionUtils.isNotEmpty(xAxis)) {
+            xAxis.stream()
+                .filter(field -> field.getExtField() != null && Objects.equals(field.getExtField(), ExtFieldConstant.EXT_CALC))
+                .forEach(field -> {
+                    if (StringUtils.isNotBlank(field.getDataeaseName()) && !dataeaseNames.contains(field.getDataeaseName())) {
+                        dataeaseNames.add(field.getDataeaseName());
+                    }
+                });
+        }
+        if (CollectionUtils.isNotEmpty(yAxis)) {
+            yAxis.stream()
+                .filter(field -> field.getExtField() != null && Objects.equals(field.getExtField(), ExtFieldConstant.EXT_CALC))
+                .forEach(field -> {
+                    if (StringUtils.isNotBlank(field.getDataeaseName()) && !dataeaseNames.contains(field.getDataeaseName())) {
+                        dataeaseNames.add(field.getDataeaseName());
+                    }
+                });
+        }
         var axisMap = formatResult.getAxisMap();
         axisMap.forEach((axis, fields) -> {
             fields.removeIf(fieldDTO -> !dataeaseNames.contains(fieldDTO.getDataeaseName()));
@@ -149,12 +170,18 @@ public class ChartDataManage {
         List<ChartExtFilterDTO> extFilterList = new ArrayList<>();
         //组件过滤条件
         List<SqlVariableDetails> sqlVariables = datasetGroupManage.getSqlParams(Collections.singletonList(view.getTableId()));
+        FilterTreeObj requestCustomFilter = null; // 保存请求中的 customFilter
         if (ObjectUtils.isNotEmpty(chartExtRequest.getFilter())) {
             for (ChartExtFilterDTO request : chartExtRequest.getFilter()) {
                 // 解析多个fieldId,fieldId是一个逗号分隔的字符串
                 String fieldId = request.getFieldId();
                 if (request.getIsTree() == null) {
                     request.setIsTree(false);
+                }
+
+                // 如果 isTree=true 且 customFilter 不为空，保存 customFilter
+                if (BooleanUtils.isTrue(request.getIsTree()) && request.getCustomFilter() != null) {
+                    requestCustomFilter = request.getCustomFilter();
                 }
 
                 boolean hasParameters = false;
@@ -366,6 +393,10 @@ public class ChartDataManage {
         // 指标表联动时 使用的CustomFilter
         if (customLinkageFilter != null) {
             fieldCustomFilter = customLinkageFilter;
+        }
+        // 请求中的 customFilter（来自 queryData 接口）
+        if (requestCustomFilter != null) {
+            fieldCustomFilter = requestCustomFilter;
         }
         chartFilterTreeService.searchFieldAndSet(fieldCustomFilter);
         fieldCustomFilter = chartFilterTreeService.charReplace(fieldCustomFilter);

@@ -94,10 +94,24 @@ const cancelMap = {}
 // request拦截器
 service.interceptors.request.use(
   async (c: InternalAxiosRequestConfigWidthLoading<InternalAxiosRequestConfig>) => {
+    // 在 configHandler 之前先保护 AccessKey 相关的 headers
+    const accessKeyHeaders: Record<string, string> = {}
+    const originalHeaders = c.headers as AxiosRequestHeaders
+    if (originalHeaders['X-ACCESS-KEY']) {
+      accessKeyHeaders['X-ACCESS-KEY'] = originalHeaders['X-ACCESS-KEY'] as string
+    }
+    if (originalHeaders['X-TIMESTAMP']) {
+      accessKeyHeaders['X-TIMESTAMP'] = originalHeaders['X-TIMESTAMP'] as string
+    }
+    if (originalHeaders['X-SIGNATURE']) {
+      accessKeyHeaders['X-SIGNATURE'] = originalHeaders['X-SIGNATURE'] as string
+    }
+
     let config = configHandler(c)
     if (config instanceof Promise) {
       config = await config
     }
+
     if (
       config.method === 'post' &&
       (config.headers as AxiosRequestHeaders)['Content-Type'] ===
@@ -140,6 +154,24 @@ service.interceptors.request.use(
       cancelMap[config.url] = c
     })
     config.loading && tryShowLoading(permissionStore.getCurrentPath)
+
+    // 恢复 AccessKey 相关的 headers（确保它们被正确设置）
+    if (Object.keys(accessKeyHeaders).length > 0) {
+      // 确保 headers 对象存在
+      if (!config.headers) {
+        config.headers = {} as AxiosRequestHeaders
+      }
+      // 强制设置 AccessKey headers，确保它们不会被覆盖
+      Object.keys(accessKeyHeaders).forEach(key => {
+        const headerValue = accessKeyHeaders[key]
+        if (headerValue) {
+          ;(config.headers as AxiosRequestHeaders)[key] = headerValue
+          // 同时设置小写版本，确保兼容性
+          ;(config.headers as AxiosRequestHeaders)[key.toLowerCase()] = headerValue
+        }
+      })
+    }
+
     return config
   },
   (error: AxiosErrorWidthLoading<AxiosError>) => {

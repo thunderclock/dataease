@@ -114,6 +114,11 @@ public class Utils {
                     return field.getOriginName();
                 }
             }
+            // 如果找不到匹配的字段，且 fieldExpression 不为空，则返回 fieldExpression
+            // 这通常发生在计算字段不在 originFields 中的情况
+            if (StringUtils.isNotBlank(fieldExpression)) {
+                return fieldExpression;
+            }
             return "";
         } else {
             return fieldExpression;

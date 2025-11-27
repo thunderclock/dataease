@@ -11,6 +11,7 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.util.Assert;
 
 import java.util.*;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -60,7 +61,16 @@ public class DatasetUtils {
     }
 
     public static String getDecode(String str) {
-        return new String(Base64.getDecoder().decode(str));
+        if (str == null || str.isEmpty()) {
+            return str;
+        }
+        try {
+            return new String(Base64.getDecoder().decode(str));
+        } catch (IllegalArgumentException e) {
+            // 如果解码失败（字符串不是有效的Base64编码），返回原始字符串
+            // 这通常发生在数据已经损坏或某些字段不需要解码的情况下
+            return str;
+        }
     }
 
     /**
@@ -70,7 +80,7 @@ public class DatasetUtils {
      */
     public static void dsEncode(DatasetGroupInfoDTO obj) {
         for (DatasetTableFieldDTO dto : obj.getAllFields()) {
-            if (dto.getExtField().equals(ExtFieldConstant.EXT_CALC)) {
+            if (Objects.equals(dto.getExtField(), ExtFieldConstant.EXT_CALC)) {
                 dto.setOriginName(getEncode(dto.getOriginName()));
             }
         }
@@ -83,7 +93,7 @@ public class DatasetUtils {
      */
     public static void dsDecode(DatasetGroupInfoDTO obj) {
         for (DatasetTableFieldDTO dto : obj.getAllFields()) {
-            if (dto.getExtField().equals(ExtFieldConstant.EXT_CALC)) {
+            if (Objects.equals(dto.getExtField(), ExtFieldConstant.EXT_CALC)) {
                 dto.setOriginName(getDecode(dto.getOriginName()));
             }
         }
@@ -99,7 +109,7 @@ public class DatasetUtils {
             return;
         }
         for (DatasetTableFieldDTO dto : fields) {
-            if (dto.getExtField().equals(ExtFieldConstant.EXT_CALC)) {
+            if (Objects.equals(dto.getExtField(), ExtFieldConstant.EXT_CALC)) {
                 dto.setOriginName(getEncode(dto.getOriginName()));
             }
         }
@@ -115,7 +125,7 @@ public class DatasetUtils {
             return;
         }
         for (DatasetTableFieldDTO dto : fields) {
-            if (dto.getExtField().equals(ExtFieldConstant.EXT_CALC)) {
+            if (Objects.equals(dto.getExtField(), ExtFieldConstant.EXT_CALC)) {
                 dto.setOriginName(getDecode(dto.getOriginName()));
             }
         }

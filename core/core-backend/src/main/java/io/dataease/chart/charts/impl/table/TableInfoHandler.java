@@ -5,6 +5,7 @@ import io.dataease.api.dataset.union.DatasetGroupInfoDTO;
 import io.dataease.chart.charts.impl.DefaultChartHandler;
 import io.dataease.engine.sql.SQLProvider;
 import io.dataease.engine.trans.Dimension2SQLObj;
+import io.dataease.engine.trans.Quota2SQLObj;
 import io.dataease.engine.utils.Utils;
 import io.dataease.extensions.datasource.dto.DatasourceRequest;
 import io.dataease.extensions.datasource.dto.DatasourceSchemaDTO;
@@ -31,7 +32,8 @@ public class TableInfoHandler extends DefaultChartHandler {
     @Override
     public AxisFormatResult formatAxis(ChartViewDTO view) {
         var result = super.formatAxis(view);
-        result.getAxisMap().put(ChartAxis.yAxis, new ArrayList<>());
+        // 保留 yAxis，不清空，以便支持指标字段的查询
+        // super.formatAxis 已经正确处理了 yAxis，不需要再清空
         return result;
     }
 
@@ -39,15 +41,31 @@ public class TableInfoHandler extends DefaultChartHandler {
     public <T extends CustomFilterResult> T customFilter(ChartViewDTO view, List<ChartExtFilterDTO> filterList, AxisFormatResult formatResult) {
         var chartExtRequest = view.getChartExtRequest();
         Map<String, Object> mapAttr = view.getCustomAttr();
-        Map<String, Object> mapSize = (Map<String, Object>) mapAttr.get("basicStyle");
-        var tablePageMode = (String) mapSize.get("tablePageMode");
+        
+        // 安全处理 mapAttr 和 mapSize，避免空指针异常
+        Map<String, Object> mapSize = null;
+        if (mapAttr != null) {
+            mapSize = (Map<String, Object>) mapAttr.get("basicStyle");
+        }
+        
+        String tablePageMode = "all"; // 默认值
+        if (mapSize != null) {
+            Object tablePageModeObj = mapSize.get("tablePageMode");
+            if (tablePageModeObj != null) {
+                tablePageMode = (String) tablePageModeObj;
+            }
+        }
+        
         formatResult.getContext().put("tablePageMode", tablePageMode);
         if (StringUtils.equalsIgnoreCase(tablePageMode, "page")) {
             if (chartExtRequest.getGoPage() == null) {
                 chartExtRequest.setGoPage(1L);
             }
             if (chartExtRequest.getPageSize() == null) {
-                int pageSize = (int) mapSize.get("tablePageSize");
+                int pageSize = 10; // 默认值
+                if (mapSize != null && mapSize.get("tablePageSize") != null) {
+                    pageSize = (int) mapSize.get("tablePageSize");
+                }
                 if (StringUtils.equalsIgnoreCase(view.getResultMode(), "custom")) {
                     chartExtRequest.setPageSize(Math.min(pageSize, view.getResultCount().longValue()));
                 } else {
@@ -68,7 +86,26 @@ public class TableInfoHandler extends DefaultChartHandler {
 
     @Override
     public Map<String, Object> buildResult(ChartViewDTO view, AxisFormatResult formatResult, CustomFilterResult filterResult, List<String[]> data) {
-        return new HashMap<>();
+        Map<String, Object> result = new HashMap<>();
+        
+        // 获取 xAxis 和 yAxis
+        var xAxis = formatResult.getAxisMap().get(ChartAxis.xAxis);
+        var yAxis = formatResult.getAxisMap().get(ChartAxis.yAxis);
+        
+        // 构建字段列表（xAxis + yAxis）
+        List<ChartViewFieldDTO> fields = new ArrayList<>();
+        if (CollectionUtils.isNotEmpty(xAxis)) {
+            fields.addAll(xAxis);
+        }
+        if (CollectionUtils.isNotEmpty(yAxis)) {
+            fields.addAll(yAxis);
+        }
+        
+        // 将字段列表和原始数据放入结果中
+        result.put("fields", fields);
+        result.put("sourceData", data);
+        
+        return result;
     }
 
     @Override
@@ -84,6 +121,7 @@ public class TableInfoHandler extends DefaultChartHandler {
         datasourceRequest.setIsCross(crossDs);
         datasourceRequest.setDsList(dsMap);
         var xAxis = formatResult.getAxisMap().get(ChartAxis.xAxis);
+        var yAxis = formatResult.getAxisMap().get(ChartAxis.yAxis);
         var allFields = (List<ChartViewFieldDTO>) filterResult.getContext().get("allFields");
         PageInfo pageInfo = new PageInfo();
         pageInfo.setGoPage(chartExtRequest.getGoPage());
@@ -93,6 +131,11 @@ public class TableInfoHandler extends DefaultChartHandler {
             pageInfo.setPageSize(chartExtRequest.getPageSize());
         }
         Dimension2SQLObj.dimension2sqlObj(sqlMeta, xAxis, FieldUtil.transFields(allFields), crossDs, dsMap, Utils.getParams(FieldUtil.transFields(allFields)), view.getCalParams(), pluginManage);
+        // 添加 yAxis（指标字段）到 SQL 中
+        boolean hasYAxis = CollectionUtils.isNotEmpty(yAxis);
+        if (hasYAxis) {
+            Quota2SQLObj.quota2sqlObj(sqlMeta, yAxis, FieldUtil.transFields(allFields), crossDs, dsMap, Utils.getParams(FieldUtil.transFields(allFields)), view.getCalParams(), pluginManage);
+        }
         if (view.getIsExcelExport()) {
             for (int i = 0; i < xAxis.size(); i++) {
                 ChartViewFieldDTO fieldDTO = null;
@@ -107,12 +150,15 @@ public class TableInfoHandler extends DefaultChartHandler {
             }
         }
 
-        String originSql = SQLProvider.createQuerySQL(sqlMeta, false, !StringUtils.equalsIgnoreCase(dsMap.entrySet().iterator().next().getValue().getType(), "es"), view);// 明细表强制加排序
+        // 如果有 yAxis（指标字段），需要使用 isGroup=true 来包含聚合字段
+        boolean isGroup = hasYAxis;
+        String originSql = SQLProvider.createQuerySQL(sqlMeta, isGroup, !StringUtils.equalsIgnoreCase(dsMap.entrySet().iterator().next().getValue().getType(), "es"), view);// 明细表强制加排序
         String limit = ((pageInfo.getGoPage() != null && pageInfo.getPageSize() != null) ? " LIMIT " + pageInfo.getPageSize() + " OFFSET " + (pageInfo.getGoPage() - 1) * chartExtRequest.getPageSize() : "");
         var querySql = originSql + limit;
 
         var tablePageMode = (String) filterResult.getContext().get("tablePageMode");
-        var totalPageSql = "SELECT COUNT(*) FROM (" + SQLProvider.createQuerySQLNoSort(sqlMeta, false, view) + ") COUNT_TEMP";
+        // 如果有 yAxis，需要使用 isGroup=true
+        var totalPageSql = "SELECT COUNT(*) FROM (" + SQLProvider.createQuerySQLNoSort(sqlMeta, isGroup, view) + ") COUNT_TEMP";
         if (StringUtils.isNotEmpty(totalPageSql) && StringUtils.equalsIgnoreCase(tablePageMode, "page")) {
             totalPageSql = provider.rebuildSQL(totalPageSql, sqlMeta, crossDs, dsMap);
             datasourceRequest.setQuery(totalPageSql);
@@ -152,7 +198,7 @@ public class TableInfoHandler extends DefaultChartHandler {
                     finalXAxis.add(fieldDTO);
                 }
             });
-            var yAxis = formatResult.getAxisMap().get(ChartAxis.yAxis);
+            // yAxis 已在方法开始处定义，这里直接使用
             var assistFields = getAssistFields(dynamicAssistFields, yAxis, xAxis);
             if (CollectionUtils.isNotEmpty(assistFields)) {
                 var req = new DatasourceRequest();

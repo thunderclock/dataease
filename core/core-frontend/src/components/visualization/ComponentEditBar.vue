@@ -120,6 +120,14 @@
               >{{ t('visualization.show_data_info') }}</el-dropdown-item
             >
             <el-dropdown-item
+              @click="openDataServiceDialog"
+              v-if="
+                !['picture-group', 'rich-text'].includes(element.innerType) &&
+                barShowCheck('details')
+              "
+              >{{ t('visualization.data_service') }}</el-dropdown-item
+            >
+            <el-dropdown-item
               style="padding: 0"
               v-if="
                 !['picture-group', 'rich-text'].includes(element.innerType) &&
@@ -222,6 +230,11 @@
       <fields-list :fields="state.curFields" :element="element" />
     </el-popover>
     <custom-tabs-sort ref="customTabsSortRef"></custom-tabs-sort>
+    <chart-data-service-dialog
+      :view="viewInfo"
+      v-model:visible="dataServiceDialogVisible"
+      @close="dataServiceDialogVisible = false"
+    />
   </div>
 </template>
 
@@ -252,13 +265,23 @@ import { exportPivotExcel } from '@/views/chart/components/js/panel/common/commo
 import { XpackComponent } from '@/components/plugin'
 import { exportPermission, isMobile } from '@/utils/utils'
 import { isMainCanvas } from '@/utils/canvasUtils'
+import ChartDataServiceDialog from './ChartDataServiceDialog.vue'
 const dvMainStore = dvMainStoreWithOut()
 const snapshotStore = snapshotStoreWithOut()
 const copyStore = copyStoreWithOut()
 const customTabsSortRef = ref(null)
+const dataServiceDialogVisible = ref(false)
 const exportPermissions = computed(() =>
   exportPermission(dvInfo.value['weight'], dvInfo.value['ext'])
 )
+
+// 获取当前图表的视图信息
+const viewInfo = computed(() => {
+  if (element.value && element.value.id) {
+    return dvMainStore.getViewDetails(element.value.id)
+  }
+  return null
+})
 const emits = defineEmits([
   'userViewEnlargeOpen',
   'datasetParamsInit',
@@ -506,6 +529,14 @@ const userViewEnlargeOpen = (e, opt) => {
   e.preventDefault()
   e.stopPropagation()
   emits('userViewEnlargeOpen', opt)
+}
+
+const openDataServiceDialog = () => {
+  if (!viewInfo.value) {
+    ElMessage.warning(t('visualization.chart_info_not_found'))
+    return
+  }
+  dataServiceDialogVisible.value = true
 }
 
 const hiddenComponent = () => {

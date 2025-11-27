@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   mysql:
-    image: mysql:8.0
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/mysql:8.0.42-linuxarm64
     container_name: dataease-mysql-test
     restart: always
     environment:
@@ -12,7 +12,7 @@ services:
       MYSQL_PASSWORD: DataEase@123456
       TZ: Asia/Shanghai
     ports:
-      - "3306:3306"
+      - "13306:3306"
     volumes:
       - ./core/core-backend/src/main/resources/db/migration:/docker-entrypoint-initdb.d
     command: 
@@ -24,7 +24,7 @@ services:
       - dataease-network
 
   redis:
-    image: redis:7-alpine
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/redis:7-alpine-linuxarm64
     container_name: dataease-redis-test
     restart: always
     ports:

@@ -44,16 +44,24 @@ public class SubstituleLoginConfig {
     public static String getPwd() {
         if (!ready) {
             ready = true;
+            try {
             Object substituleLoginDataObject = CommonBeanFactory.getBean("substituleLoginData");
             if (substituleLoginDataObject != null) {
                 Map<String, Object> substituleLoginData = (Map<String, Object>) substituleLoginDataObject;
                 if (ObjectUtils.isNotEmpty(substituleLoginData.get("pwd"))) {
                     pwd = substituleLoginData.get("pwd").toString();
-                    return substituleLoginData.get("pwd").toString();
+                        return pwd;
+                    }
                 }
+            } catch (Exception e) {
+                LogUtil.warn("Failed to load substitule login data, using default password: " + e.getMessage());
+            }
+            // 如果无法从配置文件读取，使用默认密码
+            if (pwd == null) {
+                pwd = "DataEase@123456";
             }
         }
-        return pwd;
+        return pwd != null ? pwd : "DataEase@123456";
     }
 
     public void modifyPwd(String pwd) {

@@ -87,10 +87,27 @@
             /></el-icon>
             {{ t('chart.export_excel_formatter') }}
           </el-button>
+          <el-button
+            class="m-button"
+            v-if="optType === 'details'"
+            link
+            size="middle"
+            @click="openDataServiceDialog"
+          >
+            <el-icon color="#1F2329" size="16" style="margin-right: 3px"
+              ><icon_download_outlined
+            /></el-icon>
+            {{ t('visualization.data_service') }}
+          </el-button>
           <el-divider
             class="close-divider"
             direction="vertical"
-            v-if="exportPermissions[0] || exportPermissions[1] || exportPermissions[2]"
+            v-if="
+              exportPermissions[0] ||
+              exportPermissions[1] ||
+              exportPermissions[2] ||
+              optType === 'details'
+            "
           />
         </div>
       </div>
@@ -158,6 +175,11 @@
       </div>
     </div>
   </el-dialog>
+  <chart-data-service-dialog
+    :view="viewInfo"
+    v-model:visible="dataServiceDialogVisible"
+    @close="dataServiceDialogVisible = false"
+  />
 </template>
 
 <script setup lang="ts">
@@ -184,6 +206,7 @@ import { exportPermission } from '@/utils/utils'
 import EmptyBackground from '../empty-background/src/EmptyBackground.vue'
 import { supportExtremumChartType } from '@/views/chart/components/js/extremumUitl'
 import ChartCarouselTooltip from '@/views/chart/components/js/g2plot_tooltip_carousel'
+import ChartDataServiceDialog from './ChartDataServiceDialog.vue'
 const downLoading = ref(false)
 const dvMainStore = dvMainStoreWithOut()
 const dialogShow = ref(false)
@@ -201,6 +224,7 @@ const exportLoading = ref(false)
 const sourceViewType = ref()
 const activeName = ref('left')
 const detailsError = ref(false)
+const dataServiceDialogVisible = ref(false)
 const DETAIL_CHART_ATTR: DeepPartial<ChartObj> = {
   render: 'antv',
   type: 'table-info',
@@ -393,6 +417,14 @@ const exportAsFormattedExcel = () => {
 }
 const exportData = () => {
   useEmitt().emitter.emit('data-export-center', { activeName: 'IN_PROGRESS' })
+}
+
+const openDataServiceDialog = () => {
+  if (!viewInfo.value) {
+    ElMessage.warning(t('visualization.chart_info_not_found'))
+    return
+  }
+  dataServiceDialogVisible.value = true
 }
 
 const openMessageLoading = cb => {

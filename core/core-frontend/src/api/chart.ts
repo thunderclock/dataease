@@ -141,6 +141,56 @@ export const getDrillFieldData = async ({ fieldId, data }): Promise<IResponse> =
   })
 }
 
+// 查询数据（简化版）
+export const queryChartData = async (
+  data,
+  accessKey?: string,
+  accessSecret?: string
+): Promise<IResponse> => {
+  // 如果提供了 AccessKey，使用签名方式请求
+  if (accessKey && accessSecret) {
+    const { axiosPostWithAccessKey } = await import('@/utils/accessKey')
+    const axiosModule = await import('@/config/axios/service')
+    const axiosInstance = axiosModule.service
+    return axiosPostWithAccessKey(
+      axiosInstance,
+      '/commonData/queryChartData',
+      data,
+      accessKey,
+      accessSecret
+    )
+  }
+  // 否则使用普通方式请求
+  return request.post({ url: '/commonData/queryChartData', data }).then(res => {
+    return res
+  })
+}
+
+// 根据字段名查询数据
+export const queryData = async (
+  data,
+  accessKey?: string,
+  accessSecret?: string
+): Promise<IResponse> => {
+  // 如果提供了 AccessKey，使用签名方式请求
+  if (accessKey && accessSecret) {
+    const { axiosPostWithAccessKey } = await import('@/utils/accessKey')
+    const axiosModule = await import('@/config/axios/service')
+    const axiosInstance = axiosModule.service
+    return axiosPostWithAccessKey(
+      axiosInstance,
+      '/commonData/queryData',
+      data,
+      accessKey,
+      accessSecret
+    )
+  }
+  // 否则使用普通方式请求
+  return request.post({ url: '/commonData/queryData', data }).then(res => {
+    return res
+  })
+}
+
 export const getChartDetail = async (id: string): Promise<IResponse> => {
   return request.post({ url: `chart/getDetail/${id}`, data: {} }).then(res => {
     return res

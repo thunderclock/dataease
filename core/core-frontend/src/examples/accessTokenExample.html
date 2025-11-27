@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataEase AccessToken 签名验证示例</title>
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 100px;
+            font-family: monospace;
+        }
+        button {
+            background: #409eff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #66b1ff;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .result pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .error {
+            color: #f56c6c;
+        }
+        .success {
+            color: #67c23a;
+        }
+    </style>
+</head>
+<body>
+    <h1>DataEase AccessToken 签名验证示例</h1>
+    
+    <div class="container">
+        <h2>配置</h2>
+        <div class="form-group">
+            <label>Base URL:</label>
+            <input type="text" id="baseUrl" value="http://localhost:8100" placeholder="http://localhost:8100">
+        </div>
+        <div class="form-group">
+            <label>AccessToken:</label>
+            <input type="text" id="accessToken" placeholder="de_abc123...">
+        </div>
+        <div class="form-group">
+            <label>AccessSecret:</label>
+            <input type="password" id="accessSecret" placeholder="xyz789...">
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>请求数据</h2>
+        <div class="form-group">
+            <label>请求体 (JSON):</label>
+            <textarea id="requestBody" placeholder='{"tableId": 123, "dimensions": [], "measures": [], "pageInfo": {"pageNum": 1, "pageSize": 10}}'></textarea>
+        </div>
+        <button onclick="testQueryData()">测试 queryData</button>
+        <button onclick="testQueryChartData()">测试 queryChartData</button>
+        <button onclick="generateSignature()">生成签名</button>
+    </div>
+
+    <div class="container">
+        <h2>结果</h2>
+        <div id="result" class="result">
+            <p>点击按钮测试...</p>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * AccessToken 签名工具类
+         */
+        class AccessTokenSigner {
+            constructor(accessToken, accessSecret) {
+                this.accessToken = accessToken
+                this.accessSecret = accessSecret
+            }
+
+            /**
+             * 生成签名
+             */
+            generateSignature(timestamp, requestBody) {
+                // 待签名字符串：accessSecret + timestamp + requestBody
+                const signString = this.accessSecret + timestamp + (requestBody || '')
+                
+                // 使用 HMAC-SHA256 算法生成签名
+                const hash = CryptoJS.HmacSHA256(signString, this.accessSecret)
+                
+                // Base64 编码
+                return CryptoJS.enc.Base64.stringify(hash)
+            }
+
+            /**
+             * 生成请求头
+             */
+            generateHeaders(requestBody) {
+                const timestamp = Date.now()
+                const signature = this.generateSignature(timestamp, requestBody)
+
+                return {
+                    'X-ACCESS-TOKEN': this.accessToken,
+                    'X-TIMESTAMP': timestamp.toString(),
+                    'X-SIGNATURE': signature,
+                    'Content-Type': 'application/json'
+                }
+            }
+        }
+
+        /**
+         * 使用 AccessToken 发送 POST 请求
+         */
+        async function postWithAccessToken(url, data, accessToken, accessSecret) {
+            const signer = new AccessTokenSigner(accessToken, accessSecret)
+            const requestBody = typeof data === 'string' ? data : JSON.stringify(data)
+            const headers = signer.generateHeaders(requestBody)
+
+            console.log('Request Headers:', headers)
+            console.log('Request Body:', requestBody)
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: headers,
+                body: requestBody
+            })
+
+            const result = await response.json()
+            
+            if (!response.ok) {
+                throw new Error(result.msg || `HTTP error! status: ${response.status}`)
+            }
+
+            return result
+        }
+
+        /**
+         * 测试 queryData 接口
+         */
+        async function testQueryData() {
+            const baseUrl = document.getElementById('baseUrl').value
+            const accessToken = document.getElementById('accessToken').value
+            const accessSecret = document.getElementById('accessSecret').value
+            const requestBodyText = document.getElementById('requestBody').value
+
+            if (!accessToken || !accessSecret) {
+                showResult('error', '请填写 AccessToken 和 AccessSecret')
+                return
+            }
+
+            let requestData
+            try {
+                requestData = JSON.parse(requestBodyText || '{}')
+            } catch (e) {
+                showResult('error', '请求体 JSON 格式错误: ' + e.message)
+                return
+            }
+
+            // 设置默认值
+            if (!requestData.tableId) {
+                requestData.tableId = 123
+            }
+            if (!requestData.pageInfo) {
+                requestData.pageInfo = { pageNum: 1, pageSize: 10 }
+            }
+            if (!requestData.dimensions) {
+                requestData.dimensions = []
+            }
+            if (!requestData.measures) {
+                requestData.measures = []
+            }
+
+            try {
+                showResult('info', '正在发送请求...')
+                const response = await postWithAccessToken(
+                    `${baseUrl}/commonData/queryData`,
+                    requestData,
+                    accessToken,
+                    accessSecret
+                )
+                showResult('success', '请求成功', response)
+            } catch (error) {
+                showResult('error', '请求失败: ' + error.message, error)
+            }
+        }
+
+        /**
+         * 测试 queryChartData 接口
+         */
+        async function testQueryChartData() {
+            const baseUrl = document.getElementById('baseUrl').value
+            const accessToken = document.getElementById('accessToken').value
+            const accessSecret = document.getElementById('accessSecret').value
+            const requestBodyText = document.getElementById('requestBody').value
+
+            if (!accessToken || !accessSecret) {
+                showResult('error', '请填写 AccessToken 和 AccessSecret')
+                return
+            }
+
+            let requestData
+            try {
+                requestData = JSON.parse(requestBodyText || '{}')
+            } catch (e) {
+                showResult('error', '请求体 JSON 格式错误: ' + e.message)
+                return
+            }
+
+            // 设置默认值
+            if (!requestData.tableId) {
+                requestData.tableId = 123
+            }
+            if (!requestData.pageInfo) {
+                requestData.pageInfo = { goPage: 1, pageSize: 10 }
+            }
+            if (!requestData.dimensions) {
+                requestData.dimensions = []
+            }
+            if (!requestData.measures) {
+                requestData.measures = []
+            }
+
+            try {
+                showResult('info', '正在发送请求...')
+                const response = await postWithAccessToken(
+                    `${baseUrl}/commonData/queryChartData`,
+                    requestData,
+                    accessToken,
+                    accessSecret
+                )
+                showResult('success', '请求成功', response)
+            } catch (error) {
+                showResult('error', '请求失败: ' + error.message, error)
+            }
+        }
+
+        /**
+         * 生成签名（用于调试）
+         */
+        function generateSignature() {
+            const accessSecret = document.getElementById('accessSecret').value
+            const requestBodyText = document.getElementById('requestBody').value
+
+            if (!accessSecret) {
+                showResult('error', '请填写 AccessSecret')
+                return
+            }
+
+            const timestamp = Date.now()
+            const requestBody = requestBodyText || '{}'
+            const signer = new AccessTokenSigner('', accessSecret)
+            const signature = signer.generateSignature(timestamp, requestBody)
+
+            const info = {
+                timestamp: timestamp,
+                requestBody: requestBody,
+                signature: signature,
+                signString: accessSecret + timestamp + requestBody
+            }
+
+            showResult('info', '签名信息', info)
+        }
+
+        /**
+         * 显示结果
+         */
+        function showResult(type, message, data) {
+            const resultDiv = document.getElementById('result')
+            let html = `<p class="${type}">${message}</p>`
+            
+            if (data) {
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`
+            }
+            
+            resultDiv.innerHTML = html
+        }
+    </script>
+</body>
+</html>
+

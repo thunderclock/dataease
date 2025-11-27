@@ -74,9 +74,11 @@ public class DefaultChartHandler extends AbstractChartPlugin {
         var axisMap = new HashMap<ChartAxis, List<ChartViewFieldDTO>>();
         var context = new HashMap<String, Object>();
         var result = new AxisFormatResult(axisMap, context);
-        axisMap.put(ChartAxis.xAxis, new ArrayList<>(view.getXAxis()));
-        axisMap.put(ChartAxis.yAxis, new ArrayList<>(view.getYAxis()));
-        axisMap.put(ChartAxis.drill, new ArrayList<>(view.getDrillFields()));
+        axisMap.put(ChartAxis.xAxis, view.getXAxis() != null ? new ArrayList<>(view.getXAxis()) : new ArrayList<>());
+        axisMap.put(ChartAxis.yAxis, view.getYAxis() != null ? new ArrayList<>(view.getYAxis()) : new ArrayList<>());
+        // 安全处理 drillFields，避免空指针异常
+        List<ChartViewFieldDTO> drillFields = view.getDrillFields();
+        axisMap.put(ChartAxis.drill, drillFields != null && !drillFields.isEmpty() ? new ArrayList<>(drillFields) : new ArrayList<>());
         return result;
     }
 

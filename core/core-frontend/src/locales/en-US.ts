@@ -4403,5 +4403,39 @@ export default {
   'user_management.cancel': 'Cancel',
   'user_management.password_edit_placeholder': 'Leave empty to keep current password',
   'user_management.password_edit_tip':
-    'Leave empty to keep current password, enter new password to replace it'
+    'Leave empty to keep current password, enter new password to replace it',
+  // AccessKey management page related translations
+  access_key_management: {
+    title: 'AccessKey Management',
+    generate_key: 'Generate AccessKey',
+    name: 'Name',
+    name_placeholder: 'Please enter AccessKey name',
+    name_required: 'Please enter AccessKey name',
+    access_key: 'AccessKey',
+    access_secret: 'AccessSecret',
+    status: 'Status',
+    enabled: 'Enabled',
+    disabled: 'Disabled',
+    disable: 'Disable',
+    delete: 'Delete',
+    expire_time: 'Expire Time',
+    never_expires: 'Never Expires',
+    custom_expire: 'Custom Expire Time',
+    select_expire_time: 'Please select expire time',
+    create_time: 'Create Time',
+    last_use_time: 'Last Use Time',
+    key_generated: 'Key Generated Successfully',
+    secret_warning: 'Please keep AccessSecret safe. It will only be displayed once and cannot be viewed again after closing the dialog!',
+    load_failed: 'Failed to load AccessKey list',
+    generate_success: 'AccessKey generated successfully',
+    generate_failed: 'Failed to generate AccessKey',
+    disable_confirm: 'Are you sure to disable AccessKey "{name}"?',
+    disable_success: 'AccessKey disabled successfully',
+    disable_failed: 'Failed to disable AccessKey',
+    delete_confirm: 'Are you sure to delete AccessKey "{name}"?',
+    delete_success: 'AccessKey deleted successfully',
+    delete_failed: 'Failed to delete AccessKey',
+    copy_success: 'Copied successfully',
+    copy_failed: 'Copy failed'
+  }
 }
