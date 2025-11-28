@@ -6,4 +6,3 @@ import AccessTokenManagementPage from './AccessTokenManagementPage.vue'
 </template>
 
 <style lang="less" scoped></style>
-

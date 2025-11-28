@@ -25,6 +25,7 @@ import io.dataease.extensions.view.dto.ChartFieldCompareDTO;
 import io.dataease.extensions.view.dto.ChartViewDTO;
 import io.dataease.extensions.view.dto.ChartViewFieldDTO;
 import io.dataease.extensions.view.dto.FormatterCfgDTO;
+import io.dataease.extensions.view.dto.SqlVariableDetails;
 import io.dataease.extensions.view.filter.DynamicTimeSetting;
 import io.dataease.extensions.view.filter.FilterTreeItem;
 import io.dataease.extensions.view.filter.FilterTreeObj;
@@ -385,6 +386,44 @@ public class CommonDataServer implements CommonDataApi {
                 }
             } else {
                 LogUtil.info("No filters in request");
+            }
+
+            // 处理数据集参数（如果提供了 params）
+            if (CollectionUtils.isNotEmpty(request.getParams())) {
+                LogUtil.info("Processing dataset params: {}", JsonUtil.toJSONString(request.getParams()));
+                List<ChartExtFilterDTO> paramFilters = new ArrayList<>();
+                for (QueryDataRequest.DatasetParam param : request.getParams()) {
+                    // 自动构造参数 ID（格式：{datasetTableId}|DE|{variableName}）
+                    String paramId = param.getDatasetTableId() + "|DE|" + param.getVariableName();
+                    
+                    ChartExtFilterDTO paramFilter = new ChartExtFilterDTO();
+                    // 设置 fieldId 为参数 ID（包含 "DE" 标识），这样才能被识别为数据集参数
+                    paramFilter.setFieldId(paramId);
+                    // 如果未提供 operator，默认使用 "eq"
+                    String operator = StringUtils.isNotEmpty(param.getOperator()) ? param.getOperator() : "eq";
+                    paramFilter.setOperator(operator);
+                    paramFilter.setValue(param.getValue());
+                    
+                    // 构建 SqlVariableDetails 对象
+                    SqlVariableDetails sqlVariable = new SqlVariableDetails();
+                    sqlVariable.setId(paramId);
+                    sqlVariable.setVariableName(param.getVariableName());
+                    sqlVariable.setDatasetTableId(param.getDatasetTableId());
+                    sqlVariable.setDatasetGroupId(param.getDatasetGroupId());
+                    sqlVariable.setOperator(operator);
+                    sqlVariable.setValue(param.getValue());
+                    // deType 使用默认值 0，如果需要可以从数据集定义中获取
+                    
+                    paramFilter.setParameters(List.of(sqlVariable));
+                    paramFilters.add(paramFilter);
+                }
+                
+                // 将参数 filter 添加到 filters 列表中
+                if (CollectionUtils.isEmpty(chartExtRequest.getFilter())) {
+                    chartExtRequest.setFilter(new ArrayList<>());
+                }
+                chartExtRequest.getFilter().addAll(paramFilters);
+                LogUtil.info("Added {} param filters to ChartExtRequest", paramFilters.size());
             }
             
             chartViewDTO.setChartExtRequest(chartExtRequest);

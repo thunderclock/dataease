@@ -38,7 +38,13 @@ const basePath = import.meta.env.VITE_API_BASEPATH
 
 const embeddedBasePath =
   basePath.startsWith('./') && basePath.length > 2 ? basePath.substring(2) : basePath
-export const PATH_URL = embeddedStore.baseUrl ? embeddedStore?.baseUrl + embeddedBasePath : basePath
+// 确保路径以 / 开头，避免相对路径问题
+const normalizedBasePath = embeddedBasePath.startsWith('/')
+  ? embeddedBasePath
+  : '/' + embeddedBasePath
+export const PATH_URL = embeddedStore.baseUrl
+  ? embeddedStore?.baseUrl + normalizedBasePath
+  : normalizedBasePath
 
 export interface AxiosInstanceWithLoading extends AxiosInstance {
   <T = any, R = AxiosResponse<T>, D = any>(

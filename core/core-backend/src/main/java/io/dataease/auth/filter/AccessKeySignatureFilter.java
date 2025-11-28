@@ -155,11 +155,23 @@ public class AccessKeySignatureFilter implements Filter {
             // 继续处理请求
             filterChain.doFilter(cachedRequest, servletResponse);
         } catch (DEException e) {
-            throw e;
+            sendErrorResponse(response, e.getCode(), e.getMessage());
         } catch (Exception e) {
             LogUtil.error("AccessKey signature verification error", e);
-            DEException.throwException(ResultCode.SYSTEM_INNER_ERROR.code(), "Signature verification error: " + e.getMessage());
+            sendErrorResponse(response, ResultCode.SYSTEM_INNER_ERROR.code(), "Signature verification error: " + e.getMessage());
         }
+    }
+
+    /**
+     * 发送错误响应
+     */
+    private void sendErrorResponse(HttpServletResponse response, Integer code, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json;charset=UTF-8");
+        
+        String jsonResponse = String.format("{\"code\":%d,\"msg\":\"%s\",\"data\":null}", code, message);
+        response.getWriter().write(jsonResponse);
+        response.getWriter().flush();
     }
 
     private String getRequestBody(HttpServletRequest request) throws IOException {

@@ -18,13 +18,13 @@
       <el-table :data="tokenList" v-loading="loading" stripe style="width: 100%">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" :label="t('access_token_management.name')" width="200" />
-        <el-table-column prop="accessToken" :label="t('access_token_management.access_token')" min-width="250">
+        <el-table-column
+          prop="accessToken"
+          :label="t('access_token_management.access_token')"
+          min-width="250"
+        >
           <template #default="{ row }">
-            <el-input
-              :value="row.accessToken"
-              readonly
-              style="width: 100%"
-            >
+            <el-input :value="row.accessToken" readonly style="width: 100%">
               <template #append>
                 <el-button @click="copyToClipboard(row.accessToken)" size="small">
                   <el-icon><DocumentCopy /></el-icon>
@@ -36,7 +36,11 @@
         <el-table-column :label="t('access_token_management.status')" width="100">
           <template #default="{ row }">
             <el-tag :type="row.enable ? 'success' : 'danger'">
-              {{ row.enable ? t('access_token_management.enabled') : t('access_token_management.disabled') }}
+              {{
+                row.enable
+                  ? t('access_token_management.enabled')
+                  : t('access_token_management.disabled')
+              }}
             </el-tag>
           </template>
         </el-table-column>
@@ -62,12 +66,7 @@
         <el-table-column :label="t('common.actions')" width="200" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
-              <el-button
-                v-if="row.enable"
-                type="warning"
-                size="small"
-                @click="disableToken(row)"
-              >
+              <el-button v-if="row.enable" type="warning" size="small" @click="disableToken(row)">
                 {{ t('access_token_management.disable') }}
               </el-button>
               <el-button type="danger" size="small" @click="deleteToken(row)">
@@ -132,11 +131,7 @@
       />
       <el-form label-width="120px">
         <el-form-item :label="t('access_token_management.access_token')">
-          <el-input
-            :value="generatedToken?.accessToken"
-            readonly
-            style="width: 100%"
-          >
+          <el-input :value="generatedToken?.accessToken" readonly style="width: 100%">
             <template #append>
               <el-button @click="copyToClipboard(generatedToken?.accessToken)" size="small">
                 <el-icon><DocumentCopy /></el-icon>
@@ -174,7 +169,11 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus-secondary'
 import { Plus, Refresh, DocumentCopy } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
-import { accessTokenApi, type AccessTokenVO, type GenerateAccessTokenRequest } from '@/api/accessToken'
+import {
+  accessTokenApi,
+  type AccessTokenVO,
+  type GenerateAccessTokenRequest
+} from '@/api/accessToken'
 
 const { t } = useI18n()
 
@@ -274,7 +273,8 @@ const disableToken = async (token: AccessTokenVO) => {
       }
     )
 
-    await accessTokenApi.disable(token.id!)
+    if (!token.id) return
+    await accessTokenApi.disable(token.id)
     ElMessage.success(t('access_token_management.disable_success'))
     loadTokens()
   } catch (error: any) {
@@ -298,7 +298,8 @@ const deleteToken = async (token: AccessTokenVO) => {
       }
     )
 
-    await accessTokenApi.delete(token.id!)
+    if (!token.id) return
+    await accessTokenApi.delete(token.id)
     ElMessage.success(t('access_token_management.delete_success'))
     loadTokens()
   } catch (error: any) {
@@ -313,8 +314,23 @@ const deleteToken = async (token: AccessTokenVO) => {
 const copyToClipboard = async (text?: string) => {
   if (!text) return
   try {
-    await navigator.clipboard.writeText(text)
-    ElMessage.success(t('access_token_management.copy_success'))
+    // 检查是否支持 Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text)
+      ElMessage.success(t('access_token_management.copy_success'))
+    } else {
+      // 降级方案：使用 document.execCommand
+      const textarea = document.createElement('textarea')
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      textarea.style.left = '-999999px'
+      textarea.value = text
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+      ElMessage.success(t('access_token_management.copy_success'))
+    }
   } catch (error) {
     console.error('复制失败:', error)
     ElMessage.error(t('access_token_management.copy_failed'))
@@ -370,4 +386,3 @@ onMounted(() => {
   }
 }
 </style>
-

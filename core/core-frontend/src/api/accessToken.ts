@@ -1,4 +1,4 @@
-import request from '@/config/axios/service'
+import request from '@/config/axios'
 
 export interface AccessTokenVO {
   id?: number
@@ -33,4 +33,3 @@ export const accessTokenApi = {
   // 删除 AccessToken
   delete: (id: number) => request.delete({ url: `/accessToken/${id}` })
 }
-

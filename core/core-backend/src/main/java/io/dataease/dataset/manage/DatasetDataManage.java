@@ -921,6 +921,7 @@ public class DatasetDataManage {
 
         //组件过滤条件
         List<ChartExtFilterDTO> extFilterList = new ArrayList<>();
+        List<SqlVariableDetails> sqlVariables = datasetGroupManage.getSqlParams(Arrays.asList(datasetGroupInfoDTO.getId()));
         if (ObjectUtils.isNotEmpty(request.getFilter())) {
             for (ChartExtFilterDTO filterDTO : request.getFilter()) {
                 // 解析多个fieldId,fieldId是一个逗号分隔的字符串
@@ -929,18 +930,25 @@ public class DatasetDataManage {
                     filterDTO.setIsTree(false);
                 }
 
+                // 检查是否包含数据集参数
                 boolean hasParameters = false;
-                List<SqlVariableDetails> sqlVariables = datasetGroupManage.getSqlParams(Arrays.asList(datasetGroupInfoDTO.getId()));
-                if (org.apache.commons.collections4.CollectionUtils.isNotEmpty(sqlVariables)) {
-                    for (SqlVariableDetails parameter : Optional.ofNullable(filterDTO.getParameters()).orElse(new ArrayList<>())) {
+                String parameterFieldId = null;
+                if (!CollectionUtils.isEmpty(sqlVariables) && !CollectionUtils.isEmpty(filterDTO.getParameters())) {
+                    for (SqlVariableDetails parameter : filterDTO.getParameters()) {
                         String parameterId = StringUtils.endsWith(parameter.getId(), START_END_SEPARATOR) ? parameter.getId().split(START_END_SEPARATOR)[0] : parameter.getId();
                         if (sqlVariables.stream().map(SqlVariableDetails::getId).collect(Collectors.toList()).contains(parameterId)) {
                             hasParameters = true;
+                            parameterFieldId = parameterId;
+                            break;
                         }
                     }
                 }
 
-                if (hasParameters) {
+                // 如果包含数据集参数，设置 fieldId 为参数 ID，这样参数可以通过 filterParameters 方法被提取
+                // 注意：包含参数的 filter 不会添加到 extFilterList，因为参数是通过 filterParameters 方法单独处理的
+                if (hasParameters && StringUtils.isNotEmpty(parameterFieldId)) {
+                    filterDTO.setFieldId(parameterFieldId);
+                    // 参数 filter 保留在 request.getFilter() 中，filterParameters 方法会处理它们
                     continue;
                 }
 

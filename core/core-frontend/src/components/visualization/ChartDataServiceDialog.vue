@@ -324,6 +324,106 @@
                       @update:filter="queryDataForm.filters = $event"
                     />
                   </el-form-item>
+                  <el-form-item :label="t('visualization.dataset_params')">
+                    <div class="params-container">
+                      <el-button type="primary" size="small" @click="addDatasetParam">
+                        {{ t('visualization.add_dataset_param') }}
+                      </el-button>
+                      <div
+                        v-if="queryDataForm.params && queryDataForm.params.length > 0"
+                        class="params-list"
+                      >
+                        <div
+                          v-for="(param, index) in queryDataForm.params"
+                          :key="index"
+                          class="param-item"
+                        >
+                          <el-card shadow="hover" style="margin-top: 10px">
+                            <template #header>
+                              <div
+                                style="
+                                  display: flex;
+                                  justify-content: space-between;
+                                  align-items: center;
+                                "
+                              >
+                                <span>{{ t('visualization.dataset_param') }} {{ index + 1 }}</span>
+                                <el-button
+                                  type="danger"
+                                  size="small"
+                                  text
+                                  @click="removeDatasetParam(index)"
+                                >
+                                  {{ t('chart.delete') }}
+                                </el-button>
+                              </div>
+                            </template>
+                            <el-row :gutter="20">
+                              <el-col :span="12">
+                                <el-form-item :label="t('visualization.variable_name')">
+                                  <el-input
+                                    v-model="param.variableName"
+                                    :placeholder="t('visualization.variable_name_placeholder')"
+                                  />
+                                </el-form-item>
+                              </el-col>
+                              <el-col :span="12">
+                                <el-form-item :label="t('visualization.dataset_table_id')">
+                                  <el-input-number
+                                    v-model="param.datasetTableId"
+                                    :placeholder="t('visualization.dataset_table_id_placeholder')"
+                                    style="width: 100%"
+                                    :min="1"
+                                  />
+                                </el-form-item>
+                              </el-col>
+                            </el-row>
+                            <el-row :gutter="20">
+                              <el-col :span="12">
+                                <el-form-item :label="t('visualization.dataset_group_id')">
+                                  <el-input-number
+                                    v-model="param.datasetGroupId"
+                                    :placeholder="t('visualization.dataset_group_id_placeholder')"
+                                    style="width: 100%"
+                                    :min="1"
+                                  />
+                                </el-form-item>
+                              </el-col>
+                              <el-col :span="12">
+                                <el-form-item :label="t('visualization.operator')">
+                                  <el-select
+                                    v-model="param.operator"
+                                    :placeholder="t('visualization.operator_placeholder')"
+                                    style="width: 100%"
+                                    clearable
+                                  >
+                                    <el-option label="eq (等于)" value="eq" />
+                                    <el-option label="in (包含)" value="in" />
+                                    <el-option label="between (区间)" value="between" />
+                                  </el-select>
+                                  <span class="form-tip">
+                                    {{ t('visualization.operator_tip') }}
+                                  </span>
+                                </el-form-item>
+                              </el-col>
+                            </el-row>
+                            <el-form-item :label="t('visualization.param_value')">
+                              <el-input
+                                v-model="param.valueString"
+                                :placeholder="t('visualization.param_value_placeholder')"
+                                type="textarea"
+                                :rows="2"
+                              />
+                              <span class="form-tip">{{ t('visualization.param_value_tip') }}</span>
+                            </el-form-item>
+                          </el-card>
+                        </div>
+                      </div>
+                      <div v-else class="empty-tip" style="margin-top: 10px">
+                        {{ t('visualization.no_dataset_params') }}
+                      </div>
+                    </div>
+                  </el-form-item>
                   <el-form-item :label="t('chart.pagination')">
                     <el-row :gutter="20">
                       <el-col :span="12">
@@ -538,6 +638,7 @@ const queryDataForm = reactive({
   dimensions: [] as any[],
   measures: [] as any[],
   filters: null as any, // QueryFilterDTO 结构
+  params: [] as any[], // 数据集参数列表
   pageInfo: {
     pageNum: 1,
     pageSize: 10
@@ -670,6 +771,22 @@ const removeFilter = (index: number) => {
 }
 
 // queryData 过滤条件由 QueryFilterEditor 组件管理，这里不需要单独的函数
+
+// 添加数据集参数
+const addDatasetParam = () => {
+  queryDataForm.params.push({
+    variableName: '',
+    datasetTableId: queryDataForm.tableId || null,
+    datasetGroupId: null,
+    operator: '',
+    valueString: ''
+  })
+}
+
+// 移除数据集参数
+const removeDatasetParam = (index: number) => {
+  queryDataForm.params.splice(index, 1)
+}
 
 // queryChartData 测试查询
 const testQueryChartData = async () => {
@@ -805,12 +922,44 @@ const testQueryData = async () => {
       queryDataDebugLoading.value = false
       return
     }
-    const requestData = {
+    // 处理 params：将 valueString 转换为数组
+    const processedParams = queryDataForm.params
+      ?.map((param: any) => {
+        const processedParam: any = {
+          variableName: param.variableName,
+          datasetTableId: param.datasetTableId,
+          datasetGroupId: param.datasetGroupId,
+          value: []
+        }
+        // 如果有 operator，添加到参数中
+        if (param.operator) {
+          processedParam.operator = param.operator
+        }
+        // 将 valueString 转换为数组
+        if (param.valueString) {
+          // 支持逗号分隔的多个值
+          processedParam.value = param.valueString
+            .split(',')
+            .map((v: string) => v.trim())
+            .filter((v: string) => v.length > 0)
+        }
+        return processedParam
+      })
+      .filter((param: any) => {
+        // 过滤掉无效的参数（至少需要 variableName, datasetTableId 和 value）
+        return param.variableName && param.datasetTableId && param.value && param.value.length > 0
+      })
+
+    const requestData: any = {
       tableId: queryDataForm.tableId,
       dimensions: queryDataForm.dimensions,
       measures: queryDataForm.measures,
       filters: queryDataForm.filters,
       pageInfo: queryDataForm.pageInfo
+    }
+    // 只有当 params 有值时才添加到请求中
+    if (processedParams && processedParams.length > 0) {
+      requestData.params = processedParams
     }
     queryDataRequestJson.value = JSON.stringify(requestData, null, 2)
 
@@ -1010,6 +1159,30 @@ onMounted(() => {
       margin-bottom: 8px;
       background: #f5f7fa;
       border-radius: 4px;
+    }
+  }
+
+  .params-container {
+    width: 100%;
+
+    .params-list {
+      margin-top: 10px;
+
+      .param-item {
+        margin-bottom: 10px;
+
+        :deep(.el-card__body) {
+          padding: 15px;
+        }
+
+        :deep(.el-form-item) {
+          margin-bottom: 15px;
+        }
+
+        :deep(.el-form-item:last-child) {
+          margin-bottom: 0;
+        }
+      }
     }
   }
 

@@ -129,7 +129,23 @@ DataEase 数据服务提供了两个核心接口，用于查询数据集中的�
       "compareCalc": null
     }
   ],
-  "filters": [],
+  "filters": [
+    {
+      "fieldId": "123456|DE|param_name",
+      "operator": "eq",
+      "value": ["value1"],
+      "parameters": [
+        {
+          "id": "123456|DE|param_name",
+          "variableName": "param_name",
+          "datasetTableId": 123,
+          "datasetGroupId": 456,
+          "operator": "eq",
+          "value": ["value1"]
+        }
+      ]
+    }
+  ],
   "pageInfo": {
     "goPage": 1,
     "pageSize": 10
@@ -147,11 +163,31 @@ DataEase 数据服务提供了两个核心接口，用于查询数据集中的�
 | `tableId` | Long | 是 | 数据集表ID |
 | `dimensions` | List<ChartViewFieldDTO> | 是 | 维度字段列表 |
 | `measures` | List<ChartViewFieldDTO> | 是 | 度量字段列表 |
-| `filters` | List<ChartExtFilterDTO> | 否 | 过滤条件列表 |
+| `filters` | List<ChartExtFilterDTO> | 否 | 过滤条件列表（支持数据集参数） |
 | `pageInfo` | PageInfo | 否 | 分页信息 |
 | `sceneId` | Long | 否 | 场景ID（用于权限校验） |
 | `id` | Long | 否 | 图表ID（用于模板数据获取） |
 | `dataFrom` | String | 否 | 数据来源：`template`（模板数据）或 `dataset`（数据集数据） |
+
+**ChartExtFilterDTO 参数**（用于 `filters` 字段）：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `fieldId` | String | 是 | 字段ID或参数ID（参数ID格式：`{datasetTableId}\|DE\|{variableName}`） |
+| `operator` | String | 是 | 操作符：`eq`、`in`、`between` 等 |
+| `value` | List<String> | 是 | 过滤值列表 |
+| `parameters` | List<SqlVariableDetails> | 否 | 数据集参数列表（用于数据集参数过滤） |
+
+**SqlVariableDetails 参数**（用于 `parameters` 字段）：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `id` | String | 是 | 参数ID（格式：`{datasetTableId}\|DE\|{variableName}`） |
+| `variableName` | String | 是 | 参数变量名（SQL中定义的变量名） |
+| `datasetTableId` | Long | 是 | 数据集表ID |
+| `datasetGroupId` | Long | 是 | 数据集组ID |
+| `operator` | String | 是 | 操作符：`eq`、`in`、`between` 等 |
+| `value` | List<String> | 是 | 参数值列表 |
 
 **PageInfo 参数**：
 
@@ -250,6 +286,15 @@ DataEase 数据服务提供了两个核心接口，用于查询数据集中的�
       }
     ]
   },
+  "params": [
+    {
+      "variableName": "start_date",
+      "datasetTableId": 123456,
+      "datasetGroupId": 789,
+      "operator": "eq",
+      "value": ["2024-01-01"]
+    }
+  ],
   "pageInfo": {
     "pageNum": 1,
     "pageSize": 10
@@ -265,6 +310,7 @@ DataEase 数据服务提供了两个核心接口，用于查询数据集中的�
 | `dimensions` | List<FieldQueryConfig> | 是 | 维度字段配置列表 |
 | `measures` | List<FieldQueryConfig> | 是 | 度量字段配置列表 |
 | `filters` | QueryFilterDTO | 否 | 过滤条件（支持嵌套条件） |
+| `params` | List<DatasetParam> | 否 | 数据集参数列表（用于替换 SQL 中的参数变量） |
 | `pageInfo` | PageInfo | 否 | 分页信息 |
 
 **FieldQueryConfig 参数**：
@@ -306,6 +352,92 @@ DataEase 数据服务提供了两个核心接口，用于查询数据集中的�
 | `timeType` | String | 是 | 相对时间类型：如 `today`（今天）、`yesterday`（昨天）、`thisWeek`（本周）等 |
 | `offset` | Integer | 否 | 相对数量（如：-7 表示7天前，+7 表示7天后） |
 | `unit` | String | 否 | 时间单位：`day`（天）、`week`（周）、`month`（月）、`year`（年） |
+
+**DatasetParam 参数**（用于 `params` 字段）：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `variableName` | String | 是 | 参数变量名（SQL 中定义的变量名，如：`start_date`） |
+| `datasetTableId` | Long | 是 | 数据集表ID |
+| `datasetGroupId` | Long | 否 | 数据集组ID（可选） |
+| `operator` | String | 否 | 操作符：`eq`（等于）、`in`（包含）、`between`（区间）等。默认为 `eq`，如果未提供则使用默认值 |
+| `value` | List<String> | 是 | 参数值列表。多个值用逗号分隔，`in` 操作符可传入多个值，`between` 操作符传入两个值 |
+
+**DatasetParam 使用说明**：
+- 参数 ID 会自动从 `datasetTableId` 和 `variableName` 构造（格式：`{datasetTableId}|DE|{variableName}`）
+- 如果未提供 `operator`，默认使用 `eq`
+- `value` 必须是字符串数组，即使只有一个值也需要使用数组格式
+- 参数值会替换 SQL 查询中对应的变量，例如：SQL 中的 `${start_date}` 会被替换为传入的值
+
+**DatasetParam 示例**：
+
+```json
+{
+  "params": [
+    {
+      "variableName": "start_date",
+      "datasetTableId": 123456,
+      "datasetGroupId": 789,
+      "operator": "eq",
+      "value": ["2024-01-01"]
+    },
+    {
+      "variableName": "end_date",
+      "datasetTableId": 123456,
+      "operator": "between",
+      "value": ["2024-01-01", "2024-12-31"]
+    },
+    {
+      "variableName": "status",
+      "datasetTableId": 123456,
+      "operator": "in",
+      "value": ["active", "pending", "completed"]
+    }
+  ]
+}
+```
+
+### 3. 在 filter 中使用数据集参数（queryChartData）
+
+`queryChartData` 接口的 `filters` 字段支持设置数据集参数，用于在 SQL 查询中替换参数变量。
+
+**使用场景**：
+- 数据集 SQL 中包含参数变量，如：`SELECT * FROM table WHERE date >= ${start_date}`
+- 需要在查询时动态传入参数值
+
+**示例**：
+
+```json
+{
+  "tableId": 123,
+  "dimensions": [...],
+  "measures": [...],
+  "filters": [
+    {
+      "fieldId": "123456|DE|start_date",
+      "operator": "eq",
+      "value": ["2024-01-01"],
+      "parameters": [
+        {
+          "id": "123456|DE|start_date",
+          "variableName": "start_date",
+          "datasetTableId": 123456,
+          "datasetGroupId": 789,
+          "operator": "eq",
+          "value": ["2024-01-01"],
+          "deType": 1
+        }
+      ]
+    }
+  ]
+}
+```
+
+**注意事项**：
+1. 参数 ID 格式：`{datasetTableId}|DE|{variableName}`
+2. `parameters` 数组中的参数必须包含完整的参数信息（id、variableName、datasetTableId 等）
+3. `operator` 和 `value` 会应用到参数上，用于 SQL 变量替换
+4. 如果数据集 SQL 中定义了参数变量（如 `${variable_name}`），参数值会替换对应的变量
 
 **PageInfo 参数**：
 
@@ -430,14 +562,23 @@ async function queryDataExample() {
           fieldName: 'field3',
           term: 'eq',
           valueType: 'fixed',
-          value: 'value1'
-        }
-      ]
-    },
-    pageInfo: {
-      pageNum: 1,
-      pageSize: 10
+        value: 'value1'
+      }
+    ]
+  },
+  params: [
+    {
+      variableName: 'start_date',
+      datasetTableId: 123456,
+      datasetGroupId: 789,
+      operator: 'eq',
+      value: ['2024-01-01']
     }
+  ],
+  pageInfo: {
+    pageNum: 1,
+    pageSize: 10
+  }
   }
 
   try {
@@ -684,6 +825,15 @@ public class Example {
         measure.setSummary("sum");
         request.setMeasures(java.util.Arrays.asList(measure));
         
+        // 设置数据集参数（可选）
+        QueryDataRequest.DatasetParam param = new QueryDataRequest.DatasetParam();
+        param.setVariableName("start_date");
+        param.setDatasetTableId(123456L);
+        param.setDatasetGroupId(789L);
+        param.setOperator("eq");
+        param.setValue(java.util.Arrays.asList("2024-01-01"));
+        request.setParams(java.util.Arrays.asList(param));
+        
         // 设置分页
         QueryDataRequest.PageInfo pageInfo = new QueryDataRequest.PageInfo();
         pageInfo.setPageNum(1L);
@@ -811,6 +961,7 @@ class DataEaseClient:
         dimensions: list,
         measures: list,
         filters: Optional[Dict] = None,
+        params: Optional[list] = None,
         page_num: int = 1,
         page_size: int = 10
     ) -> Dict[str, Any]:
@@ -820,6 +971,7 @@ class DataEaseClient:
             "dimensions": dimensions,
             "measures": measures,
             "filters": filters,
+            "params": params,
             "pageInfo": {
                 "pageNum": page_num,
                 "pageSize": page_size
@@ -916,6 +1068,15 @@ if __name__ == "__main__":
                     }
                 ]
             },
+            params=[
+                {
+                    "variableName": "start_date",
+                    "datasetTableId": 123456,
+                    "datasetGroupId": 789,
+                    "operator": "eq",
+                    "value": ["2024-01-01"]
+                }
+            ],
             page_num=1,
             page_size=10
         )
@@ -950,6 +1111,7 @@ class AsyncDataEaseClient:
         dimensions: list,
         measures: list,
         filters: Optional[Dict] = None,
+        params: Optional[list] = None,
         page_num: int = 1,
         page_size: int = 10
     ) -> Dict[str, Any]:
@@ -959,6 +1121,7 @@ class AsyncDataEaseClient:
             "dimensions": dimensions,
             "measures": measures,
             "filters": filters,
+            "params": params,
             "pageInfo": {
                 "pageNum": page_num,
                 "pageSize": page_size

@@ -1,6 +1,6 @@
 /**
  * AccessKey 签名验证示例（TypeScript）
- * 
+ *
  * 使用说明：
  * 1. 在项目中使用：import { axiosPostWithAccessKey } from '@/utils/accessKey'
  * 2. 或者直接使用此文件中的函数
@@ -176,4 +176,3 @@ export async function example() {
     console.error('查询图表数据失败:', error)
   }
 }
-

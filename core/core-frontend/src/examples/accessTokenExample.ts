@@ -247,6 +247,7 @@ export function generateSignatureNodeJS(
  * Node.js 环境下使用 axios 发送请求
  */
 export async function nodeJSExample() {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const axios = require('axios')
   const accessToken = 'de_abc123...'
   const accessSecret = 'xyz789...'

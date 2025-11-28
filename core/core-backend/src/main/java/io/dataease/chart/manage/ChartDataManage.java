@@ -171,6 +171,8 @@ public class ChartDataManage {
         //组件过滤条件
         List<SqlVariableDetails> sqlVariables = datasetGroupManage.getSqlParams(Collections.singletonList(view.getTableId()));
         FilterTreeObj requestCustomFilter = null; // 保存请求中的 customFilter
+        // 用于收集包含数据集参数的 filter，稍后添加到 filters 列表
+        List<ChartExtFilterDTO> paramFilters = new ArrayList<>();
         if (ObjectUtils.isNotEmpty(chartExtRequest.getFilter())) {
             for (ChartExtFilterDTO request : chartExtRequest.getFilter()) {
                 // 解析多个fieldId,fieldId是一个逗号分隔的字符串
@@ -184,17 +186,42 @@ public class ChartDataManage {
                     requestCustomFilter = request.getCustomFilter();
                 }
 
+                // 检查是否包含数据集参数
                 boolean hasParameters = false;
-                if (CollectionUtils.isNotEmpty(sqlVariables)) {
-                    for (SqlVariableDetails parameter : Optional.ofNullable(request.getParameters()).orElse(new ArrayList<>())) {
+                String parameterFieldId = null;
+                if (CollectionUtils.isNotEmpty(sqlVariables) && CollectionUtils.isNotEmpty(request.getParameters())) {
+                    for (SqlVariableDetails parameter : request.getParameters()) {
                         String parameterId = StringUtils.endsWith(parameter.getId(), START_END_SEPARATOR) ? parameter.getId().split(START_END_SEPARATOR)[0] : parameter.getId();
                         if (sqlVariables.stream().map(SqlVariableDetails::getId).collect(Collectors.toList()).contains(parameterId)) {
                             hasParameters = true;
+                            parameterFieldId = parameterId;
+                            break;
                         }
                     }
                 }
 
-                if (hasParameters) {
+                // 如果包含数据集参数，保存到 paramFilters 中，稍后添加到 filters 列表处理
+                // 这样可以让参数 filter 像 outerParamsFilters 一样被处理
+                if (hasParameters && StringUtils.isNotEmpty(parameterFieldId)) {
+                    ChartExtFilterDTO paramFilter = new ChartExtFilterDTO();
+                    BeanUtils.copyBean(paramFilter, request);
+                    // 设置 fieldId 为参数 ID（包含 "DE" 标识），这样才能被识别为数据集参数
+                    paramFilter.setFieldId(parameterFieldId);
+                    // 保留原有的 parameters，因为其中包含了用户传入的值和操作符
+                    // 这些参数值会通过 filterParametersAdaptor 方法应用到 SQL 查询中
+                    paramFilters.add(paramFilter);
+                    continue;
+                }
+
+                // 检查 fieldId 是否包含 "|DE|"，如果是参数 ID，则跳过解析为 Long 的逻辑
+                if (StringUtils.isNotEmpty(fieldId) && fieldId.contains("|DE|")) {
+                    // 这是参数 ID，不应该被解析为 Long，应该跳过或作为参数处理
+                    // 无论 parameters 是否为空，都应该添加到 paramFilters，因为 fieldId 包含 |DE| 就表示这是参数
+                    ChartExtFilterDTO paramFilter = new ChartExtFilterDTO();
+                    BeanUtils.copyBean(paramFilter, request);
+                    paramFilter.setFieldId(fieldId);
+                    // 如果 parameters 为空，保持为空；如果不为空，保留原有的 parameters
+                    paramFilters.add(paramFilter);
                     continue;
                 }
 
@@ -273,24 +300,38 @@ public class ChartDataManage {
             filters.addAll(chartExtRequest.getWebParamsFilters());
         }
 
+        // 从 filter 中提取的包含数据集参数的 filter（支持在普通 filter 中设置 params）
+        if (ObjectUtils.isNotEmpty(paramFilters)) {
+            filters.addAll(paramFilters);
+        }
+
 
         //联动过滤条件和外部参数过滤条件全部加上
         if (ObjectUtils.isNotEmpty(filters)) {
             for (ChartExtFilterDTO request : filters) {
                 // 包含 DE 的为数据集参数
-                if (request.getFieldId().contains("DE")) {
+                if (StringUtils.isNotEmpty(request.getFieldId()) && request.getFieldId().contains("DE")) {
                     // 组装sql 参数原始数据
-                    if (CollectionUtils.isNotEmpty(sqlVariables)) {
-                        for (SqlVariableDetails sourceVariables : sqlVariables) {
-                            if (sourceVariables.getId().equals(request.getFieldId())) {
+                    // 如果 request 中已经有 parameters，说明是从 filter 传入的，直接使用（value 和 operator 会在 filterParametersAdaptor 中应用）
+                    // 如果没有 parameters，从 sqlVariables 中查找参数定义，并使用 filter 的 value 和 operator
+                    if (CollectionUtils.isEmpty(request.getParameters()) && CollectionUtils.isNotEmpty(sqlVariables)) {
+                        // 从 sqlVariables 中查找参数定义并添加到 request 中
+                        for (SqlVariableDetails sourceVariable : sqlVariables) {
+                            if (sourceVariable.getId().equals(request.getFieldId())) {
                                 if (CollectionUtils.isEmpty(request.getParameters())) {
                                     request.setParameters(new ArrayList<>());
                                 }
-                                request.getParameters().add(sourceVariables);
+                                // 如果 filter 中有 value 和 operator，应用到参数上
+                                if (CollectionUtils.isNotEmpty(request.getValue()) && StringUtils.isNotEmpty(request.getOperator())) {
+                                    sourceVariable.setValue(request.getValue());
+                                    sourceVariable.setOperator(request.getOperator());
+                                }
+                                request.getParameters().add(sourceVariable);
+                                break;
                             }
                         }
-
                     }
+                    // 如果 request 中已经有 parameters，保留它们，filter 的 value 和 operator 会在 filterParametersAdaptor 中被应用
                 } else {
                     DatasetTableFieldDTO datasetTableField = datasetTableFieldManage.selectById(Long.valueOf(request.getFieldId()));
                     request.setDatasetTableField(datasetTableField);

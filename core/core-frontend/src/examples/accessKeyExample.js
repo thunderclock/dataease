@@ -1,10 +1,10 @@
 /**
  * AccessKey 签名验证示例
- * 
+ *
  * 使用说明：
  * 1. 在浏览器控制台中运行此代码
  * 2. 或者将代码保存为 HTML 文件并在浏览器中打开
- * 
+ *
  * 注意：需要先引入 CryptoJS 和 axios 库
  */
 
@@ -22,10 +22,10 @@
 function generateSignature(accessSecret, timestamp, requestBody) {
   // 待签名字符串：accessSecret + timestamp + requestBody
   const signString = accessSecret + timestamp + (requestBody || '')
-  
+
   // 使用 HMAC-SHA256 算法生成签名
   const hash = CryptoJS.HmacSHA256(signString, accessSecret)
-  
+
   // Base64 编码
   return CryptoJS.enc.Base64.stringify(hash)
 }
@@ -42,7 +42,7 @@ async function postWithAccessKey(url, data, accessKey, accessSecret) {
   const requestBody = typeof data === 'string' ? data : JSON.stringify(data)
   const timestamp = Date.now()
   const signature = generateSignature(accessSecret, timestamp, requestBody)
-  
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -53,12 +53,12 @@ async function postWithAccessKey(url, data, accessKey, accessSecret) {
     },
     body: requestBody
   })
-  
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ msg: response.statusText }))
     throw new Error(error.msg || `HTTP error! status: ${response.status}`)
   }
-  
+
   return response.json()
 }
 
@@ -74,7 +74,7 @@ async function axiosPostWithAccessKey(url, data, accessKey, accessSecret) {
   const requestBody = typeof data === 'string' ? data : JSON.stringify(data)
   const timestamp = Date.now()
   const signature = generateSignature(accessSecret, timestamp, requestBody)
-  
+
   return axios.post(url, requestBody, {
     headers: {
       'Content-Type': 'application/json',
@@ -82,7 +82,7 @@ async function axiosPostWithAccessKey(url, data, accessKey, accessSecret) {
       'X-TIMESTAMP': timestamp.toString(),
       'X-SIGNATURE': signature
     },
-    transformRequest: [(data) => data] // 禁用自动序列化
+    transformRequest: [data => data] // 禁用自动序列化
   })
 }
 
@@ -91,7 +91,7 @@ async function example() {
   const accessKey = 'de_abc123...'
   const accessSecret = 'xyz789...'
   const baseUrl = 'http://localhost:8100'
-  
+
   // 示例 1: 查询数据（字段名方式）
   const queryDataRequest = {
     tableId: 123,
@@ -115,7 +115,7 @@ async function example() {
       pageSize: 10
     }
   }
-  
+
   try {
     const response1 = await postWithAccessKey(
       `${baseUrl}/commonData/queryData`,
@@ -127,19 +127,19 @@ async function example() {
   } catch (error) {
     console.error('查询数据失败:', error)
   }
-  
+
   // 示例 2: 查询图表数据（ID方式）
   const queryChartDataRequest = {
     tableId: 123,
     dimensions: [
       {
-        id: 'field1_id',
+        id: 'field1_id'
         // ... 其他字段
       }
     ],
     measures: [
       {
-        id: 'field2_id',
+        id: 'field2_id'
         // ... 其他字段
       }
     ],
@@ -150,7 +150,7 @@ async function example() {
     },
     sceneId: 456
   }
-  
+
   try {
     const response2 = await axiosPostWithAccessKey(
       `${baseUrl}/commonData/queryChartData`,
@@ -166,4 +166,3 @@ async function example() {
 
 // 运行示例（取消注释以运行）
 // example()
-

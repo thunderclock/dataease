@@ -97,6 +97,7 @@ async function postWithAccessToken(url, data, accessToken, accessSecret) {
  * import CryptoJS from 'crypto-js'
  */
 function generateSignatureWithCryptoJS(accessSecret, timestamp, requestBody) {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const CryptoJS = require('crypto-js')
 
   // 待签名字符串：accessSecret + timestamp + requestBody
@@ -113,6 +114,7 @@ function generateSignatureWithCryptoJS(accessSecret, timestamp, requestBody) {
  * 使用 CryptoJS 发送请求
  */
 async function postWithAccessTokenCryptoJS(url, data, accessToken, accessSecret) {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const CryptoJS = require('crypto-js')
   const timestamp = Date.now()
   const requestBody = JSON.stringify(data)
@@ -140,7 +142,9 @@ async function postWithAccessTokenCryptoJS(url, data, accessToken, accessSecret)
  * import axios from 'axios'
  */
 async function axiosPostWithAccessToken(url, data, accessToken, accessSecret) {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const axios = require('axios')
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const CryptoJS = require('crypto-js')
 
   const timestamp = Date.now()
@@ -270,6 +274,7 @@ async function exampleQueryChartData() {
 /**
  * Node.js 环境下的签名生成（使用 crypto 模块）
  */
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const crypto = require('crypto')
 
 function generateSignatureNodeJS(accessSecret, timestamp, requestBody) {
@@ -283,6 +288,7 @@ function generateSignatureNodeJS(accessSecret, timestamp, requestBody) {
  * Node.js 环境下使用 axios 发送请求
  */
 async function nodeJSExample() {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const axios = require('axios')
   const accessToken = 'de_abc123...'
   const accessSecret = 'xyz789...'

@@ -128,6 +128,108 @@
 ./script/stop-all.sh -h
 ```
 
+### 5. package_all.sh - 项目打包脚本
+
+打包DataEase项目（SDK、前端、后端）。
+
+**功能特性：**
+- 全量打包：编译和安装 SDK、前端、后端
+- 仅后端打包：编译和安装 SDK、后端（不包括前端）
+- 自动检查Maven环境
+- 详细的日志输出
+
+**使用方法：**
+```bash
+# 全量打包（SDK + 前端 + 后端）
+./script/package_all.sh
+
+# 仅打包后端（SDK + core-backend）
+./script/package_all.sh backend
+
+# 显示帮助
+./script/package_all.sh help
+```
+
+### 6. build_docker.sh - Docker 镜像构建脚本
+
+构建DataEase Docker镜像。
+
+**功能特性：**
+- 自动检查必要文件
+- 支持跳过项目打包
+- 支持指定镜像名称和标签
+- 支持推送到镜像仓库
+- 详细的构建日志
+
+**使用方法：**
+```bash
+# 使用默认配置构建镜像
+./script/build_docker.sh
+
+# 指定标签
+./script/build_docker.sh --tag v2.10.12
+
+# 构建 x64 架构镜像
+./script/build_docker.sh --platform x64
+
+# 构建 arm 架构镜像
+./script/build_docker.sh --platform arm
+
+# 跳过项目打包，直接构建镜像
+./script/build_docker.sh --skip-build
+
+# 构建并推送到仓库
+./script/build_docker.sh --registry registry.example.com/dataease --push
+
+# 完整示例（x64 架构）
+./script/build_docker.sh --name dataease --tag v2.10.12 --platform x64 --registry registry.example.com/dataease --push
+
+# 显示帮助
+./script/build_docker.sh --help
+```
+
+### 7. build_and_push_docker.sh - Docker 镜像构建并推送脚本
+
+构建DataEase Docker镜像并自动推送到华为云SWR仓库。
+
+**功能特性：**
+- 自动使用当前 git branch 名称作为标签
+- 自动推送到华为云 SWR 仓库
+- 支持跳过项目打包
+- 自动处理特殊字符
+- 详细的构建和推送日志
+
+**使用方法：**
+```bash
+# 使用默认配置构建并推送（使用当前 git branch 作为标签）
+./script/build_and_push_docker.sh
+
+# 构建 x64 架构镜像并推送
+./script/build_and_push_docker.sh --platform x64
+
+# 构建 arm 架构镜像并推送
+./script/build_and_push_docker.sh --platform arm
+
+# 跳过项目打包，直接构建并推送
+./script/build_and_push_docker.sh --skip-build
+
+# 指定镜像名称
+./script/build_and_push_docker.sh --name dataease
+
+# 完整示例（x64 架构）
+./script/build_and_push_docker.sh --name dataease --platform x64
+
+# 显示帮助
+./script/build_and_push_docker.sh --help
+```
+
+**说明：**
+- 镜像将推送到：`swr.cn-southwest-2.myhuaweicloud.com/fangcang`
+- 标签将使用当前 git branch 名称（特殊字符会被替换为下划线）
+- 支持指定平台：`x64` (linux/amd64) 或 `arm` (linux/arm64)
+- 指定平台时会使用 Docker buildx 构建跨平台镜像
+- 首次使用需要登录华为云 SWR：`docker login swr.cn-southwest-2.myhuaweicloud.com`
+
 ## 环境要求
 
 ### 后端环境

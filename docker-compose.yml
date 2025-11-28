@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mysql:
     image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/mysql:8.0.42-linuxarm64
@@ -14,6 +12,7 @@ services:
     ports:
       - "13306:3306"
     volumes:
+      - mysql_data:/var/lib/mysql
       - ./core/core-backend/src/main/resources/db/migration:/docker-entrypoint-initdb.d
     command: 
       - --character-set-server=utf8mb4
@@ -22,6 +21,12 @@ services:
       - --lower-case-table-names=1
     networks:
       - dataease-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pDataEase@123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   redis:
     image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/redis:7-alpine-linuxarm64
@@ -29,13 +34,53 @@ services:
     restart: always
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
     command: redis-server --appendonly yes --requirepass DataEase@123456
     networks:
       - dataease-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  dataease:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dataease:latest
+    container_name: dataease-app
+    restart: always
+    ports:
+      - "8100:8100"
+    environment:
+      - JAVA_OPTIONS=-Dfile.encoding=utf-8 -Dloader.path=/opt/apps -Dspring.config.additional-location=/opt/apps/config/ -Dspring.profiles.active=standalone
+      - RUNNING_PORT=8100
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./core/core-backend/src/main/resources/config:/opt/apps/config
+      - dataease_cache:/opt/dataease2.0/cache
+      - dataease_data:/opt/dataease2.0/data
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - dataease-network
+    healthcheck:
+      test: ["CMD", "nc", "-zv", "127.0.0.1", "8100"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
 volumes:
   mysql_data:
   redis_data:
+  dataease_cache:
+  dataease_data:
 
 networks:
   dataease-network:
