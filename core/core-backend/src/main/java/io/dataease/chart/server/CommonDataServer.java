@@ -14,7 +14,9 @@ import io.dataease.chart.manage.ChartViewManege;
 import io.dataease.constant.AuthEnum;
 import io.dataease.constant.CommonConstants;
 import io.dataease.constant.DeTypeConstants;
+import io.dataease.dataset.dao.auto.entity.CoreDatasetTable;
 import io.dataease.dataset.manage.DatasetTableFieldManage;
+import io.dataease.dataset.manage.DatasetTableManage;
 import io.dataease.dataset.utils.DatasetUtils;
 import io.dataease.engine.constant.ExtFieldConstant;
 import io.dataease.exception.DEException;
@@ -81,6 +83,9 @@ public class CommonDataServer implements CommonDataApi {
 
     @Resource
     private CorePermissionManage corePermissionManage;
+
+    @Resource
+    private DatasetTableManage datasetTableManage;
 
     @Override
     @DeLinkPermit("#p0.sceneId")
@@ -391,10 +396,22 @@ public class CommonDataServer implements CommonDataApi {
             // 处理数据集参数（如果提供了 params）
             if (CollectionUtils.isNotEmpty(request.getParams())) {
                 LogUtil.info("Processing dataset params: {}", JsonUtil.toJSONString(request.getParams()));
+                
+                // 从 tableId（数据集组ID）获取第一个数据集表ID
+                Long datasetTableId = null;
+                List<CoreDatasetTable> datasetTables = datasetTableManage.selectByDatasetGroupId(request.getTableId());
+                if (CollectionUtils.isNotEmpty(datasetTables)) {
+                    datasetTableId = datasetTables.get(0).getId();
+                    LogUtil.info("Auto-detected datasetTableId: {} from tableId: {}", datasetTableId, request.getTableId());
+                } else {
+                    DEException.throwException(ResultCode.DATA_IS_WRONG.code(), 
+                        String.format("数据集 %s 中未找到数据集表", request.getTableId()));
+                }
+                
                 List<ChartExtFilterDTO> paramFilters = new ArrayList<>();
                 for (QueryDataRequest.DatasetParam param : request.getParams()) {
                     // 自动构造参数 ID（格式：{datasetTableId}|DE|{variableName}）
-                    String paramId = param.getDatasetTableId() + "|DE|" + param.getVariableName();
+                    String paramId = datasetTableId + "|DE|" + param.getVariableName();
                     
                     ChartExtFilterDTO paramFilter = new ChartExtFilterDTO();
                     // 设置 fieldId 为参数 ID（包含 "DE" 标识），这样才能被识别为数据集参数
@@ -408,8 +425,10 @@ public class CommonDataServer implements CommonDataApi {
                     SqlVariableDetails sqlVariable = new SqlVariableDetails();
                     sqlVariable.setId(paramId);
                     sqlVariable.setVariableName(param.getVariableName());
-                    sqlVariable.setDatasetTableId(param.getDatasetTableId());
-                    sqlVariable.setDatasetGroupId(param.getDatasetGroupId());
+                    // datasetTableId 自动从 tableId 获取（数据集组下的第一个表）
+                    sqlVariable.setDatasetTableId(datasetTableId);
+                    // datasetGroupId 自动设置为 tableId（数据集组ID）
+                    sqlVariable.setDatasetGroupId(request.getTableId());
                     sqlVariable.setOperator(operator);
                     sqlVariable.setValue(param.getValue());
                     // deType 使用默认值 0，如果需要可以从数据集定义中获取

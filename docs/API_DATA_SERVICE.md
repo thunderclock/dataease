@@ -358,12 +358,15 @@ DataEase 数据服务提供了两个核心接口，用于查询数据集中的�
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `variableName` | String | 是 | 参数变量名（SQL 中定义的变量名，如：`start_date`） |
-| `datasetTableId` | Long | 是 | 数据集表ID |
-| `datasetGroupId` | Long | 否 | 数据集组ID（可选） |
+| `datasetTableId` | Long | 否 | 数据集表ID（**不需要传递**，后端会自动从 `tableId` 获取数据集组下的第一个数据集表ID） |
+| `datasetGroupId` | Long | 否 | 数据集组ID（**不需要传递**，后端会自动使用 `tableId` 作为数据集组ID） |
 | `operator` | String | 否 | 操作符：`eq`（等于）、`in`（包含）、`between`（区间）等。默认为 `eq`，如果未提供则使用默认值 |
 | `value` | List<String> | 是 | 参数值列表。多个值用逗号分隔，`in` 操作符可传入多个值，`between` 操作符传入两个值 |
 
 **DatasetParam 使用说明**：
+- **重要**：`datasetTableId` 和 `datasetGroupId` **不需要在前端传递**，后端会自动从请求中的 `tableId`（数据集组ID）获取：
+  - `datasetGroupId` 自动设置为 `tableId`
+  - `datasetTableId` 自动从数据集组下的第一个数据集表中获取
 - 参数 ID 会自动从 `datasetTableId` 和 `variableName` 构造（格式：`{datasetTableId}|DE|{variableName}`）
 - 如果未提供 `operator`，默认使用 `eq`
 - `value` 必须是字符串数组，即使只有一个值也需要使用数组格式
@@ -376,26 +379,24 @@ DataEase 数据服务提供了两个核心接口，用于查询数据集中的�
   "params": [
     {
       "variableName": "start_date",
-      "datasetTableId": 123456,
-      "datasetGroupId": 789,
       "operator": "eq",
       "value": ["2024-01-01"]
     },
     {
       "variableName": "end_date",
-      "datasetTableId": 123456,
       "operator": "between",
       "value": ["2024-01-01", "2024-12-31"]
     },
     {
       "variableName": "status",
-      "datasetTableId": 123456,
       "operator": "in",
       "value": ["active", "pending", "completed"]
     }
   ]
 }
 ```
+
+**注意**：示例中未包含 `datasetTableId` 和 `datasetGroupId`，因为后端会自动从 `tableId` 获取这些值。
 
 ### 3. 在 filter 中使用数据集参数（queryChartData）
 
@@ -826,10 +827,9 @@ public class Example {
         request.setMeasures(java.util.Arrays.asList(measure));
         
         // 设置数据集参数（可选）
+        // 注意：datasetTableId 和 datasetGroupId 不需要设置，后端会自动从 tableId 获取
         QueryDataRequest.DatasetParam param = new QueryDataRequest.DatasetParam();
         param.setVariableName("start_date");
-        param.setDatasetTableId(123456L);
-        param.setDatasetGroupId(789L);
         param.setOperator("eq");
         param.setValue(java.util.Arrays.asList("2024-01-01"));
         request.setParams(java.util.Arrays.asList(param));
@@ -1071,8 +1071,6 @@ if __name__ == "__main__":
             params=[
                 {
                     "variableName": "start_date",
-                    "datasetTableId": 123456,
-                    "datasetGroupId": 789,
                     "operator": "eq",
                     "value": ["2024-01-01"]
                 }

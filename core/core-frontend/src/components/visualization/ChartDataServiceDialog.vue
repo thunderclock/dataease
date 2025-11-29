@@ -359,7 +359,7 @@
                               </div>
                             </template>
                             <el-row :gutter="20">
-                              <el-col :span="12">
+                              <el-col :span="24">
                                 <el-form-item :label="t('visualization.variable_name')">
                                   <el-input
                                     v-model="param.variableName"
@@ -367,28 +367,8 @@
                                   />
                                 </el-form-item>
                               </el-col>
-                              <el-col :span="12">
-                                <el-form-item :label="t('visualization.dataset_table_id')">
-                                  <el-input-number
-                                    v-model="param.datasetTableId"
-                                    :placeholder="t('visualization.dataset_table_id_placeholder')"
-                                    style="width: 100%"
-                                    :min="1"
-                                  />
-                                </el-form-item>
-                              </el-col>
                             </el-row>
                             <el-row :gutter="20">
-                              <el-col :span="12">
-                                <el-form-item :label="t('visualization.dataset_group_id')">
-                                  <el-input-number
-                                    v-model="param.datasetGroupId"
-                                    :placeholder="t('visualization.dataset_group_id_placeholder')"
-                                    style="width: 100%"
-                                    :min="1"
-                                  />
-                                </el-form-item>
-                              </el-col>
                               <el-col :span="12">
                                 <el-form-item :label="t('visualization.operator')">
                                   <el-select
@@ -776,8 +756,7 @@ const removeFilter = (index: number) => {
 const addDatasetParam = () => {
   queryDataForm.params.push({
     variableName: '',
-    datasetTableId: queryDataForm.tableId || null,
-    datasetGroupId: null,
+    // datasetTableId 和 datasetGroupId 都不需要在前端设置，后端会自动从 tableId 获取
     operator: '',
     valueString: ''
   })
@@ -923,12 +902,12 @@ const testQueryData = async () => {
       return
     }
     // 处理 params：将 valueString 转换为数组
+    // datasetTableId 和 datasetGroupId 都不需要传递，后端会自动从 tableId 获取
     const processedParams = queryDataForm.params
       ?.map((param: any) => {
         const processedParam: any = {
           variableName: param.variableName,
-          datasetTableId: param.datasetTableId,
-          datasetGroupId: param.datasetGroupId,
+          // datasetTableId 和 datasetGroupId 由后端自动从 tableId 获取，不需要前端传递
           value: []
         }
         // 如果有 operator，添加到参数中
@@ -946,8 +925,9 @@ const testQueryData = async () => {
         return processedParam
       })
       .filter((param: any) => {
-        // 过滤掉无效的参数（至少需要 variableName, datasetTableId 和 value）
-        return param.variableName && param.datasetTableId && param.value && param.value.length > 0
+        // 过滤掉无效的参数（至少需要 variableName 和 value）
+        // datasetTableId 由后端自动从 tableId 获取，不需要前端传递
+        return param.variableName && param.value && param.value.length > 0
       })
 
     const requestData: any = {

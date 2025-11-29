@@ -101,29 +101,42 @@ public class DatasetSQLManage {
             }
         }
         if (chartExtRequest != null && ObjectUtils.isNotEmpty(chartExtRequest.getFilter())) {
+            logger.info("filterParameters: processing {} filters for datasetTableId: {}", chartExtRequest.getFilter().size(), datasetTableId);
             for (ChartExtFilterDTO filterDTO : chartExtRequest.getFilter()) {
                 if (CollectionUtils.isEmpty(filterDTO.getValue())) {
+                    logger.info("filterParameters: skipping filter with empty value, fieldId: {}", filterDTO.getFieldId());
                     continue;
                 }
+                logger.info("filterParameters: processing filter, fieldId: {}, hasParameters: {}", filterDTO.getFieldId(), ObjectUtils.isNotEmpty(filterDTO.getParameters()));
                 filterParametersAdaptor(parameters, filterDTO, datasetTableId);
             }
         }
+        logger.info("filterParameters: extracted {} parameters for datasetTableId: {}", parameters.size(), datasetTableId);
         return parameters;
     }
 
     private void filterParametersAdaptor(List<SqlVariableDetails> parameters, ChartExtFilterDTO filterDTO, Long datasetTableId) {
         if (ObjectUtils.isNotEmpty(filterDTO.getParameters())) {
             for (SqlVariableDetails parameter : filterDTO.getParameters()) {
-                if (parameter.getDatasetTableId().equals(datasetTableId)) {
+                logger.info("filterParametersAdaptor: checking parameter, parameter.datasetTableId: {}, target datasetTableId: {}, match: {}", 
+                    parameter.getDatasetTableId(), datasetTableId, parameter.getDatasetTableId() != null && parameter.getDatasetTableId().equals(datasetTableId));
+                if (parameter.getDatasetTableId() != null && parameter.getDatasetTableId().equals(datasetTableId)) {
                     parameter.setValue(filterDTO.getValue());
                     parameter.setOperator(filterDTO.getOperator());
                     parameters.add(parameter);
+                    logger.info("filterParametersAdaptor: added parameter, variableName: {}, value: {}, operator: {}", 
+                        parameter.getVariableName(), parameter.getValue(), parameter.getOperator());
                 }
             }
+        } else {
+            logger.info("filterParametersAdaptor: filterDTO has no parameters, fieldId: {}", filterDTO.getFieldId());
         }
     }
 
     public Map<String, Object> getUnionSQLForEdit(DatasetGroupInfoDTO dataTableInfoDTO, ChartExtRequest chartExtRequest) throws Exception {
+        logger.info("getUnionSQLForEdit: chartExtRequest is null: {}, filter count: {}", 
+            chartExtRequest == null, 
+            chartExtRequest != null && chartExtRequest.getFilter() != null ? chartExtRequest.getFilter().size() : 0);
         Map<Long, DatasourceSchemaDTO> dsMap = new LinkedHashMap<>();
         List<UnionDTO> union = dataTableInfoDTO.getUnion();
         // 所有选中的字段，即select后的查询字段
@@ -148,7 +161,10 @@ public class DatasetSQLManage {
             } else {
                 schema = putObj2Map(dsMap, datasetTable, isCross);
             }
-            SQLObj table = getUnionTable(datasetTable, tableInfo, schema, i, filterParameters(chartExtRequest, currentDs.getId()), chartExtRequest == null, isCross, dsMap);
+            // 为每个数据集表使用其自己的 ID 来匹配参数
+            List<SqlVariableDetails> parameters = filterParameters(chartExtRequest, datasetTable.getId());
+            logger.info("getUnionSQLForEdit: datasetTableId={}, extracted {} parameters", datasetTable.getId(), parameters.size());
+            SQLObj table = getUnionTable(datasetTable, tableInfo, schema, i, parameters, chartExtRequest == null, isCross, dsMap);
             if (i == 0) {
                 tableName = table;
             }
@@ -476,7 +492,9 @@ public class DatasetSQLManage {
             Provider provider = ProviderFactory.getProvider(dsMap.entrySet().iterator().next().getValue().getType());
             // parser sql params and replace default value
             String s = new String(Base64.getDecoder().decode(infoDTO.getSql()));
+            logger.info("getUnionTable: datasetTableId={}, parameters count={}, parameters={}", currentDs.getId(), parameters.size(), JsonUtil.toJSONString(parameters));
             String sql = new SqlparserUtils().handleVariableDefaultValue(s, currentDs.getSqlVariableDetails(), false, isFromDataSet, parameters, isCross, dsMap, pluginManage, getUserEntity());
+            logger.info("getUnionTable: after handleVariableDefaultValue, sql length={}", sql != null ? sql.length() : 0);
             sql = provider.replaceComment(sql);
             // add table schema
             if (isCross) {
