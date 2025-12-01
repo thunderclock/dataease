@@ -1,13 +1,14 @@
 package io.dataease.auth.entity;
 
+import java.io.Serializable;
+
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
-import java.io.Serializable;
 
 /**
  * AccessKey 实体类
@@ -48,6 +49,12 @@ public class AccessKey implements Serializable {
      */
     @TableField("creator")
     private Long creator;
+
+    /**
+     * 绑定的用户ID（用于权限控制，支持行级权限）
+     */
+    @TableField("user_id")
+    private Long userId;
 
     /**
      * 创建时间

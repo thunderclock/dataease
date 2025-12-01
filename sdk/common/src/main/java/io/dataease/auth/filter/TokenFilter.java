@@ -43,6 +43,20 @@ public class TokenFilter implements Filter {
         }
         String requestURI = request.getRequestURI();
 
+        // 检查是否是 commonData 接口且包含 AccessKey 签名（由 AccessKeySignatureFilter 处理）
+        boolean isCommonDataPath = requestURI.startsWith("/commonData") || 
+                                  requestURI.startsWith(AuthConstant.DE_API_PREFIX + "/commonData");
+        if (isCommonDataPath && "POST".equalsIgnoreCase(method)) {
+            String accessKey = request.getHeader("X-ACCESS-KEY");
+            String timestamp = request.getHeader("X-TIMESTAMP");
+            String signature = request.getHeader("X-SIGNATURE");
+            // 如果包含 AccessKey 相关的请求头，跳过 token 验证，由 AccessKeySignatureFilter 处理
+            if (StringUtils.isNotBlank(accessKey) && StringUtils.isNotBlank(timestamp) && StringUtils.isNotBlank(signature)) {
+                filterChain.doFilter(servletRequest, servletResponse);
+                return;
+            }
+        }
+
         boolean match = false;
         try {
             match = WhitelistUtils.match(requestURI);

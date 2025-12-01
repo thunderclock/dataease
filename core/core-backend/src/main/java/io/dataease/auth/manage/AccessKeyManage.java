@@ -25,10 +25,15 @@ public class AccessKeyManage {
      * 
      * @param name 名称/描述
      * @param creator 创建人ID
+     * @param userId 绑定的用户ID（用于权限控制，必填）
      * @param expireTime 过期时间（时间戳，null 表示永不过期）
      * @return AccessKey 对象
      */
-    public AccessKey generateAccessKey(String name, Long creator, Long expireTime) {
+    public AccessKey generateAccessKey(String name, Long creator, Long userId, Long expireTime) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId cannot be null. AccessKey must be bound to a user for permission control.");
+        }
+        
         AccessKey accessKey = new AccessKey();
         
         // 生成 AccessKey（32 位随机字符串）
@@ -41,6 +46,7 @@ public class AccessKeyManage {
         accessKey.setAccessSecret(secret);
         accessKey.setName(name);
         accessKey.setCreator(creator);
+        accessKey.setUserId(userId); // 设置绑定的用户ID
         accessKey.setCreateTime(System.currentTimeMillis());
         accessKey.setUpdateTime(System.currentTimeMillis());
         accessKey.setExpireTime(expireTime);
@@ -48,7 +54,7 @@ public class AccessKeyManage {
         
         accessKeyMapper.insert(accessKey);
         
-        LogUtil.info("Generated AccessKey: " + key + " for creator: " + creator);
+        LogUtil.info("Generated AccessKey: " + key + " for creator: " + creator + ", bound to user: " + userId);
         
         return accessKey;
     }

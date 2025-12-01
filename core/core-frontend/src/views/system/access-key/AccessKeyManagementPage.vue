@@ -18,6 +18,12 @@
       <el-table :data="keyList" v-loading="loading" stripe style="width: 100%">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" :label="t('access_key_management.name')" width="200" />
+        <el-table-column :label="t('access_key_management.bound_user')" width="150">
+          <template #default="{ row }">
+            <span v-if="row.userName">{{ row.userName }}</span>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column
           prop="accessKey"
           :label="t('access_key_management.access_key')"
@@ -91,6 +97,37 @@
             v-model="keyForm.name"
             :placeholder="t('access_key_management.name_placeholder')"
           />
+        </el-form-item>
+        <el-form-item :label="t('access_key_management.bound_user')" prop="userId">
+          <el-select
+            v-model="keyForm.userId"
+            :placeholder="t('access_key_management.select_user_placeholder')"
+            filterable
+            remote
+            :remote-method="searchUsers"
+            :loading="userSearchLoading"
+            style="width: 100%"
+            @focus="loadUserOptions"
+          >
+            <el-option
+              v-for="user in userOptions"
+              :key="user.id"
+              :label="user.username || user.account"
+              :value="user.id"
+            >
+              <span>{{ user.username || user.account }}</span>
+              <span
+                v-if="user.account && user.username"
+                class="text-muted"
+                style="margin-left: 10px; font-size: 12px"
+              >
+                ({{ user.account }})
+              </span>
+            </el-option>
+          </el-select>
+          <div class="form-tip">
+            {{ t('access_key_management.bound_user_tip') }}
+          </div>
         </el-form-item>
         <el-form-item :label="t('access_key_management.expire_time')" prop="expireTime">
           <el-radio-group v-model="expireType">
@@ -170,6 +207,7 @@ import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus-seconda
 import { Plus, Refresh, DocumentCopy } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import { accessKeyApi, type AccessKeyVO, type GenerateAccessKeyRequest } from '@/api/accessKey'
+import { userApi } from '@/api/user'
 
 const { t } = useI18n()
 
@@ -177,6 +215,8 @@ const { t } = useI18n()
 const loading = ref(false)
 const keyList = ref<AccessKeyVO[]>([])
 const generating = ref(false)
+const userSearchLoading = ref(false)
+const userOptions = ref<Array<{ id: number; username: string; account: string }>>([])
 
 // 对话框相关
 const createDialogVisible = ref(false)
@@ -188,12 +228,26 @@ const generatedKey = ref<AccessKeyVO | null>(null)
 // Key 表单
 const keyForm = reactive<GenerateAccessKeyRequest>({
   name: '',
+  userId: 0, // 初始值设为 0，表单验证会确保必须选择用户
   expireTime: null
 })
 
 // 表单验证规则
 const keyFormRules = computed(() => ({
-  name: [{ required: true, message: t('access_key_management.name_required'), trigger: 'blur' }]
+  name: [{ required: true, message: t('access_key_management.name_required'), trigger: 'blur' }],
+  userId: [
+    { required: true, message: t('access_key_management.user_required'), trigger: 'change' },
+    {
+      validator: (_rule: any, value: number, callback: any) => {
+        if (!value || value === 0) {
+          callback(new Error(t('access_key_management.user_required')))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'change'
+    }
+  ]
 }))
 
 // 方法
@@ -221,9 +275,56 @@ const showCreateDialog = () => {
 
 const resetForm = () => {
   keyForm.name = ''
+  keyForm.userId = 0
   keyForm.expireTime = null
   expireType.value = 'never'
+  userOptions.value = []
   keyFormRef.value?.clearValidate()
+}
+
+// 加载用户选项
+const loadUserOptions = async () => {
+  if (userOptions.value.length > 0) {
+    return // 已经加载过
+  }
+  try {
+    userSearchLoading.value = true
+    const response = await userApi.pager(1, 100, { keyword: '' })
+    if (response.data?.records) {
+      userOptions.value = response.data.records.map((user: any) => ({
+        id: user.id,
+        username: user.username,
+        account: user.account
+      }))
+    }
+  } catch (error) {
+    console.error('加载用户列表失败:', error)
+  } finally {
+    userSearchLoading.value = false
+  }
+}
+
+// 搜索用户
+const searchUsers = async (query: string) => {
+  if (!query) {
+    loadUserOptions()
+    return
+  }
+  try {
+    userSearchLoading.value = true
+    const response = await userApi.pager(1, 50, { keyword: query })
+    if (response.data?.records) {
+      userOptions.value = response.data.records.map((user: any) => ({
+        id: user.id,
+        username: user.username,
+        account: user.account
+      }))
+    }
+  } catch (error) {
+    console.error('搜索用户失败:', error)
+  } finally {
+    userSearchLoading.value = false
+  }
 }
 
 const generateKey = async () => {
@@ -233,8 +334,14 @@ const generateKey = async () => {
     await keyFormRef.value.validate()
     generating.value = true
 
+    if (!keyForm.userId || keyForm.userId === 0) {
+      ElMessage.error(t('access_key_management.user_required'))
+      return
+    }
+
     const requestData: GenerateAccessKeyRequest = {
       name: keyForm.name,
+      userId: keyForm.userId,
       expireTime: expireType.value === 'never' ? null : keyForm.expireTime || undefined
     }
 
@@ -379,6 +486,16 @@ onMounted(() => {
   .action-buttons {
     display: flex;
     gap: 8px;
+  }
+
+  .text-muted {
+    color: #909399;
+  }
+
+  .form-tip {
+    font-size: 12px;
+    color: #909399;
+    margin-top: 4px;
   }
 }
 </style>

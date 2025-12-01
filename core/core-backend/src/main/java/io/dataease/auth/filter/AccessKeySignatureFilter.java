@@ -2,11 +2,16 @@ package io.dataease.auth.filter;
 
 import io.dataease.auth.manage.AccessKeyManage;
 import io.dataease.auth.entity.AccessKey;
+import io.dataease.auth.bo.TokenUserBO;
 import io.dataease.auth.utils.SignatureUtils;
 import io.dataease.constant.AuthConstant;
 import io.dataease.exception.DEException;
 import io.dataease.result.ResultCode;
 import io.dataease.utils.LogUtil;
+import io.dataease.utils.UserUtils;
+import io.dataease.utils.CommonBeanFactory;
+import io.dataease.user.dao.UserMapper;
+import io.dataease.user.entity.User;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
@@ -41,6 +46,13 @@ public class AccessKeySignatureFilter implements Filter {
 
     public AccessKeySignatureFilter(AccessKeyManage accessKeyManage) {
         this.accessKeyManage = accessKeyManage;
+    }
+    
+    /**
+     * 获取 UserMapper（延迟加载，避免循环依赖）
+     */
+    private UserMapper getUserMapper() {
+        return CommonBeanFactory.getBean(UserMapper.class);
     }
 
     @Override
@@ -134,6 +146,24 @@ public class AccessKeySignatureFilter implements Filter {
             CachedBodyHttpServletRequest cachedRequest = new CachedBodyHttpServletRequest(request);
             String requestBody = getRequestBody(cachedRequest);
 
+            // 调试日志：打印签名验证相关信息
+            String expectedSignature = SignatureUtils.generateSignature(
+                keyEntity.getAccessSecret(), 
+                timestamp, 
+                requestBody
+            );
+            
+            LogUtil.info("=== AccessKey Signature Verification Debug ===");
+            LogUtil.info("AccessKey: " + accessKey);
+            LogUtil.info("Timestamp: " + timestamp + " (current: " + System.currentTimeMillis() + ")");
+            LogUtil.info("Request Body Length: " + (requestBody != null ? requestBody.length() : 0));
+            LogUtil.info("Request Body Preview: " + (requestBody != null && requestBody.length() > 100 
+                ? requestBody.substring(0, 100) + "..." : requestBody));
+            LogUtil.info("Received Signature: " + signature);
+            LogUtil.info("Expected Signature: " + expectedSignature);
+            LogUtil.info("Signatures Match: " + signature.equals(expectedSignature));
+            LogUtil.info("=============================================");
+
             // 验证签名
             boolean isValid = SignatureUtils.verifySignature(
                 signature, 
@@ -144,6 +174,8 @@ public class AccessKeySignatureFilter implements Filter {
 
             if (!isValid) {
                 LogUtil.warn("Signature verification failed for AccessKey: " + accessKey);
+                LogUtil.warn("Expected: " + expectedSignature);
+                LogUtil.warn("Received: " + signature);
                 DEException.throwException(ResultCode.DATA_IS_WRONG.code(), "Invalid signature");
             }
 
@@ -151,6 +183,42 @@ public class AccessKeySignatureFilter implements Filter {
             accessKeyManage.updateLastUseTime(accessKey);
             
             LogUtil.info("AccessKey signature verified successfully: " + accessKey);
+
+            // 设置绑定的用户信息，用于权限控制（支持行级权限）
+            if (keyEntity.getUserId() != null) {
+                try {
+                    UserMapper userMapper = getUserMapper();
+                    if (userMapper != null) {
+                        // 直接查询用户实体
+                        User user = userMapper.selectById(keyEntity.getUserId());
+                        if (user != null && user.getId() != null && (user.getDeleted() == null || !user.getDeleted())) {
+                            // 创建 TokenUserBO 并设置用户信息
+                            TokenUserBO tokenUserBO = new TokenUserBO();
+                            tokenUserBO.setUserId(user.getId());
+                            // 获取用户的组织ID（如果有）
+                            Long orgId = user.getOrgId();
+                            if (orgId != null) {
+                                tokenUserBO.setDefaultOid(orgId);
+                            } else {
+                                // 如果没有组织ID，使用默认值
+                                tokenUserBO.setDefaultOid(1L);
+                            }
+                            // 设置用户信息到 ThreadLocal，用于后续权限检查
+                            UserUtils.setUserInfo(tokenUserBO);
+                            LogUtil.info("Set user info for AccessKey: userId=" + user.getId() + ", orgId=" + tokenUserBO.getDefaultOid());
+                        } else {
+                            LogUtil.warn("User not found or deleted for AccessKey userId: " + keyEntity.getUserId());
+                        }
+                    } else {
+                        LogUtil.warn("UserMapper not available, cannot set user info for AccessKey");
+                    }
+                } catch (Exception e) {
+                    LogUtil.error("Failed to set user info for AccessKey: " + accessKey, e);
+                    // 即使设置用户信息失败，也继续处理请求（但可能无法通过权限检查）
+                }
+            } else {
+                LogUtil.warn("AccessKey has no bound user: " + accessKey);
+            }
 
             // 继续处理请求
             filterChain.doFilter(cachedRequest, servletResponse);
@@ -175,14 +243,9 @@ public class AccessKeySignatureFilter implements Filter {
     }
 
     private String getRequestBody(HttpServletRequest request) throws IOException {
-        StringBuilder body = new StringBuilder();
-        try (BufferedReader reader = request.getReader()) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                body.append(line);
-            }
-        }
-        return body.toString();
+        // 使用字节流读取，确保保留所有字符（包括换行符）
+        byte[] bodyBytes = StreamUtils.copyToByteArray(request.getInputStream());
+        return new String(bodyBytes, StandardCharsets.UTF_8);
     }
 
     /**

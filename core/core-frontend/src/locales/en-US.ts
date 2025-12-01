@@ -4481,6 +4481,11 @@ export default {
     name: 'Name',
     name_placeholder: 'Please enter AccessKey name',
     name_required: 'Please enter AccessKey name',
+    bound_user: 'Bound User',
+    select_user_placeholder: 'Please select a user to bind',
+    user_required: 'Please select a user to bind',
+    bound_user_tip:
+      "AccessKey will use this user's permissions for data access, supporting row-level permission control",
     access_key: 'AccessKey',
     access_secret: 'AccessSecret',
     status: 'Status',
