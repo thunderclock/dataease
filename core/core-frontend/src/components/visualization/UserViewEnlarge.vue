@@ -89,7 +89,7 @@
           </el-button>
           <el-button
             class="m-button"
-            v-if="optType === 'details'"
+            v-if="optType === 'details' && !publicLinkStatus"
             link
             size="middle"
             @click="openDataServiceDialog"
@@ -219,7 +219,7 @@ const { t } = useI18n()
 const optType = ref(null)
 const chartComponentDetails = ref(null)
 const chartComponentDetails2 = ref(null)
-const { dvInfo, isIframe, canvasStyleData } = storeToRefs(dvMainStore)
+const { dvInfo, isIframe, canvasStyleData, publicLinkStatus } = storeToRefs(dvMainStore)
 const exportLoading = ref(false)
 const sourceViewType = ref()
 const activeName = ref('left')

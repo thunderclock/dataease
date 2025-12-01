@@ -42,9 +42,75 @@ const embeddedBasePath =
 const normalizedBasePath = embeddedBasePath.startsWith('/')
   ? embeddedBasePath
   : '/' + embeddedBasePath
+
+/**
+ * 获取部署的基础路径（用于子路径部署）
+ * 例如：如果部署在 /reports/ 下，返回 /reports
+ */
+const getDeploymentBasePath = (): string => {
+  // 优先使用 Vite 的 BASE_URL 环境变量
+  if (import.meta.env.BASE_URL && import.meta.env.BASE_URL !== '/') {
+    const base = import.meta.env.BASE_URL
+    // 移除末尾的斜杠
+    return base.endsWith('/') ? base.slice(0, -1) : base
+  }
+
+  // 从 window.location.pathname 自动检测（仅浏览器环境）
+  if (typeof window !== 'undefined' && window.location) {
+    const pathname = window.location.pathname
+    // 如果路径包含 /#/，说明是 hash 路由，需要提取基础路径
+    if (pathname.includes('/#')) {
+      const hashIndex = pathname.indexOf('/#')
+      const base = pathname.substring(0, hashIndex)
+      // 如果基础路径不是根路径，返回它
+      if (base && base !== '/') {
+        return base.endsWith('/') ? base.slice(0, -1) : base
+      }
+    } else if (pathname !== '/') {
+      // 非 hash 路由，且不是根路径
+      // 尝试提取第一个路径段作为基础路径
+      const parts = pathname.split('/').filter(p => p)
+      if (parts.length > 0) {
+        // 检查是否是已知的应用路由（这些路由不应该作为基础路径）
+        const knownRoutes = [
+          'login',
+          'admin-login',
+          '401',
+          'dvCanvas',
+          'dashboard',
+          'dashboardPreview',
+          'chart',
+          'previewShow',
+          'workbranch',
+          'copilot',
+          'de-link'
+        ]
+        // 如果第一个路径段不是已知路由，可能是部署基础路径
+        if (!knownRoutes.includes(parts[0])) {
+          return '/' + parts[0]
+        }
+      }
+    }
+  }
+
+  return ''
+}
+
+// 获取部署基础路径
+const deploymentBasePath = getDeploymentBasePath()
+
+// 构建完整的 API 路径
+let finalBasePath = normalizedBasePath
+if (deploymentBasePath && !embeddedStore.baseUrl) {
+  // 只有在没有设置 embeddedStore.baseUrl 时才添加部署基础路径
+  // 确保路径正确拼接（移除重复的斜杠）
+  const apiPath = normalizedBasePath.startsWith('/') ? normalizedBasePath : '/' + normalizedBasePath
+  finalBasePath = deploymentBasePath + apiPath
+}
+
 export const PATH_URL = embeddedStore.baseUrl
   ? embeddedStore?.baseUrl + normalizedBasePath
-  : normalizedBasePath
+  : finalBasePath
 
 export interface AxiosInstanceWithLoading extends AxiosInstance {
   <T = any, R = AxiosResponse<T>, D = any>(

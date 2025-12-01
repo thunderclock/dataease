@@ -123,7 +123,8 @@
               @click="openDataServiceDialog"
               v-if="
                 !['picture-group', 'rich-text'].includes(element.innerType) &&
-                barShowCheck('details')
+                barShowCheck('details') &&
+                !publicLinkStatus
               "
               >{{ t('visualization.data_service') }}</el-dropdown-item
             >
@@ -387,7 +388,8 @@ const {
   mobileInPc,
   dvInfo,
   isPopWindow,
-  hiddenListStatus
+  hiddenListStatus,
+  publicLinkStatus
 } = storeToRefs(dvMainStore)
 
 const state = reactive({
